@@ -15,6 +15,7 @@
   header{background:var(--accent);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
   header h1{font-size:18px;margin:0;font-weight:700;}
   header .sub{font-size:12px;opacity:.9;}
+  header .status{color:#fff;opacity:.9;}
   nav{display:flex;gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:10;}
   nav button{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:20px;font-size:13px;cursor:pointer;font-weight:600;}
   nav button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -29,6 +30,12 @@
   .grupo h2{margin:0;padding:10px 14px;font-size:14px;background:#f4ede3;border-bottom:1px solid var(--line);color:var(--accent);}
   .fila{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);}
   .fila:last-child{border-bottom:none;}
+  .fila-wrap:last-child .fila{border-bottom:none;}
+  .aviso-lote{padding:5px 14px 8px;font-size:11px;border-bottom:1px solid var(--line);}
+  .fila-wrap:last-child .aviso-lote{border-bottom:none;}
+  .aviso-lote.info{background:#fff8e8;color:#8a6d3b;}
+  .aviso-lote.ok{background:#e8f3e0;color:#2e5c1a;}
+  .aviso-lote.mal{background:#fdecea;color:#8a2c22;font-weight:700;}
   .fila .nombre{flex:1;font-size:14px;}
   .fila .codigo{font-size:11px;color:var(--muted);width:46px;}
   .codigo-input{font-size:11px;color:var(--muted);width:48px;padding:6px 4px;border:1px solid var(--line);border-radius:6px;text-align:center;flex-shrink:0;}
@@ -74,6 +81,7 @@
   @media print{
     @page{margin:10mm;size:letter;}
     nav, .bar, #configWarning, .save-fab, header .status{display:none !important;}
+    .no-imprimir{display:none !important;}
     .banner-pendiente button, .banner-confirmado button{display:none !important;}
     .banner-pendiente, .banner-confirmado{-webkit-print-color-adjust:exact;print-color-adjust:exact;border:1px solid #999;break-inside:avoid;}
     header{background:#fff;color:var(--ink);padding:0 0 6px;margin-bottom:8px;border-bottom:2px solid var(--ink);}
@@ -100,12 +108,34 @@
 </style>
 </head>
 <body>
+
+<div id="loginOverlay" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px 26px;max-width:340px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.12);">
+    <h2 style="margin:0 0 4px;color:var(--accent);font-size:20px;">🥖 Producción Chepito</h2>
+    <p style="margin:0 0 20px;color:var(--muted);font-size:13px;">Elegí tu usuario para entrar</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+      <button onclick="mostrarClave('chepito1')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">🏠 Chepito 1</button>
+      <button onclick="mostrarClave('chepito2')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">🏠 Chepito 2</button>
+      <button onclick="mostrarClave('admin')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">🔑 Admin</button>
+    </div>
+    <div id="cajaClave" style="display:none;">
+      <input type="password" id="claveInput" placeholder="Clave" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:8px;"
+        onkeydown="if(event.key==='Enter') intentarLogin()">
+      <button onclick="intentarLogin()" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">Entrar</button>
+      <div id="loginError" style="color:var(--warn);font-size:12px;margin-top:6px;"></div>
+    </div>
+  </div>
+</div>
+
 <header>
   <div>
     <h1>🥖 Producción Chepito</h1>
     <div class="sub" id="headerSub">Cargando...</div>
   </div>
-  <div class="status" id="connStatus">conectando...</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="status" id="usuarioActual" style="cursor:pointer;text-decoration:underline;" onclick="cerrarSesion()" title="Clic para cambiar de usuario"></span>
+    <div class="status" id="connStatus">conectando...</div>
+  </div>
 </header>
 
 <nav id="navTabs">
@@ -124,6 +154,7 @@
     <input type="text" id="buscador" placeholder="Buscar producto...">
     <button id="btnExportar" onclick="onExportarTXT()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">📄 Exportar TXT</button>
     <button id="btnImprimir" onclick="onImprimir()" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ Imprimir</button>
+    <button onclick="descargarRespaldoCompleto()" title="Descarga toda la información de la app (producción, catálogo, historial) en un archivo JSON" style="background:#5a4a3a;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">💾 Respaldo JSON</button>
     <span class="status" id="saveStatus"></span>
   </div>
 
@@ -204,6 +235,13 @@
    alter table impresos enable row level security;
    create policy "acceso publico" on impresos for all using (true) with check (true);
 
+   create table lotes_compartidos (
+     fila int primary key,
+     lote numeric default 0
+   );
+   alter table lotes_compartidos enable row level security;
+   create policy "acceso publico" on lotes_compartidos for all using (true) with check (true);
+
    3. En Settings > API, copiá tu "Project URL" y tu "anon public key"
       y pegalos abajo.
 ======================================================================= */
@@ -218,6 +256,129 @@ try {
     useSupabase = true;
   }
 } catch(e) { console.error(e); }
+
+/* ====================== USUARIOS Y PERMISOS ======================
+   Claves de acceso — cambiálas aquí si querés otras.
+   IMPORTANTE: esto es un control simple para uso interno (no es
+   seguridad bancaria), pero evita que cualquiera entre a Historial
+   o cambie el catálogo de productos sin querer.
+===================================================================== */
+const CLAVES_ROL = {
+  chepito1: "chepito1",
+  chepito2: "chepito2",
+  admin: "chepitoadmin"
+};
+// Qué pestañas puede ver/usar cada rol
+const PERMISOS_ROL = {
+  chepito1: ['chepito1','consolidado','receta'],
+  chepito2: ['chepito2','consolidado','receta'],
+  admin: ['chepito1','chepito2','consolidado','receta','productos','historial']
+};
+// Productos del Excel (los 12 "base" de baguette, entre semana) cuya CANTIDAD
+// solo puede cambiar Admin — Chepito 1 y Chepito 2 los ven pero no los pueden tocar.
+// Productos del Excel de baguette (los 12 productos base × normal/sábado/domingo = 36)
+// cuya CANTIDAD solo puede cambiar Admin — Chepito 1 y Chepito 2 los ven pero no los pueden tocar.
+const PRODUCTOS_CANTIDAD_BLOQUEADA = [];
+for(let f=504; f<=539; f++) PRODUCTOS_CANTIDAD_BLOQUEADA.push(f);
+let rolActual = null;
+let rolPendiente = null;
+
+/* ====================== LOTES COMPARTIDOS (moldes que se reparten entre Chepito 1 y 2) ======================
+   Productos que salen de un molde de tamaño fijo (ej: tajada de queque = molde de 12).
+   Si ambas sucursales quieren, tienen que coordinarse para que sumado dé el tamaño del molde
+   (o un múltiplo), si no se desperdicia el molde. Admin puede cambiar el tamaño de cada molde
+   desde la pestaña Productos.
+   lotesCompartidos[fila] = tamaño del molde (0 o ausente = no es producto de molde compartido)
+===================================================================================================== */
+let lotesCompartidos = {
+  72: 12,  // Tajada de queque vainilla
+  70: 6,   // Muffin
+  105: 8,  // Queque crema pastelera
+  104: 8,  // Queque yogurt
+  80: 8,   // Gato blanco
+  63: 12,  // Torta chilena
+  95: 8,   // Integral de manzana
+  96: 8,   // Tamal asado
+  97: 8,   // Tamal maicena
+  98: 8,   // Tamal zanahoria piña
+  71: 8,   // Brownie
+  108: 8,  // Borracho
+  79: 9,   // Gato empacado rojo
+  73: 8,   // Volcado de piña
+  146: 8,  // Cuña chocolate
+  64: 8    // Arrollado queque
+};
+function loadLotesLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_lotes');
+    if(raw) lotesCompartidos = {...lotesCompartidos, ...JSON.parse(raw)};
+  }catch(e){}
+}
+function saveLotesLocal(){
+  try{ localStorage.setItem('chepito_lotes', JSON.stringify(lotesCompartidos)); }catch(e){}
+}
+async function loadLotesSupabase(){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('lotes_compartidos').select('*');
+  if(error){ console.error(error); return; }
+  (data||[]).forEach(r=>{ lotesCompartidos[r.fila] = r.lote; });
+}
+async function cambiarLote(fila, lote){
+  lotesCompartidos[fila] = Number(lote)||0;
+  saveLotesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('lotes_compartidos').upsert({fila, lote:Number(lote)||0}, {onConflict:'fila'});
+    if(error) console.error(error);
+  }
+  renderAll();
+}
+
+function mostrarClave(rol){
+  rolPendiente = rol;
+  document.getElementById('cajaClave').style.display = 'block';
+  document.getElementById('loginError').textContent = '';
+  const input = document.getElementById('claveInput');
+  input.value = '';
+  input.focus();
+}
+function intentarLogin(){
+  const clave = document.getElementById('claveInput').value;
+  if(clave === CLAVES_ROL[rolPendiente]){
+    rolActual = rolPendiente;
+    localStorage.setItem('chepito_rol', rolActual);
+    document.getElementById('loginOverlay').style.display = 'none';
+    aplicarPermisosRol();
+  } else {
+    document.getElementById('loginError').textContent = 'Clave incorrecta.';
+  }
+}
+function cerrarSesion(){
+  if(!confirm('¿Cambiar de usuario?')) return;
+  rolActual = null;
+  localStorage.removeItem('chepito_rol');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('cajaClave').style.display = 'none';
+}
+function etiquetaRol(rol){
+  return rol==='chepito1' ? '🏠 Chepito 1' : rol==='chepito2' ? '🏠 Chepito 2' : '🔑 Admin';
+}
+function aplicarPermisosRol(){
+  const permitidas = PERMISOS_ROL[rolActual] || [];
+  document.querySelectorAll('#navTabs button[data-tab]').forEach(btn=>{
+    const tab = btn.dataset.tab;
+    btn.style.display = permitidas.includes(tab) ? '' : 'none';
+  });
+  document.getElementById('usuarioActual').textContent = etiquetaRol(rolActual) + ' (cambiar)';
+  // Si la pestaña activa actual no está permitida para este rol, saltar a la primera permitida
+  if(!permitidas.includes(tabActiva)){
+    tabActiva = permitidas[0];
+    document.querySelectorAll('#navTabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabActiva));
+    ['chepito1','chepito2','consolidado','receta','productos','historial'].forEach(t=>{
+      document.getElementById('view'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = (t===tabActiva)?'block':'none';
+    });
+  }
+  renderAll();
+}
 
 /* ====================== CATÁLOGO (extraído del Excel original) ====================== */
 // [fila_consolidado, codigo, nombre, familia, peso_unitario_g]
@@ -359,6 +520,7 @@ const BASE_CATALOG=[
 [143,'00210','GALLETA CHOCO FRESA CHEPITO','',0],
 [144,'00316','MEDIAS LUNAS 6 UDS','',0],
 [145,'00233','GALLETA DE NARANJA 6 UDS','',0],
+[146,'','Cuña chocolate','',0],
 [504,'00120','Baguette con queso','baguette',0],
 [505,'00120','Baguette con queso sabado','baguette',0],
 [506,'00120','Baguette con queso domingo','baguette',0],
@@ -546,8 +708,31 @@ function onImprimir(){
   renderAll();
 }
 
+// Revisa todos los productos de molde compartido: devuelve los que NO cuadran (no son múltiplo del molde)
+function loteProblemas(fecha){
+  const problemas = [];
+  Object.keys(lotesCompartidos).forEach(filaStr=>{
+    const fila = Number(filaStr);
+    const lote = lotesCompartidos[fila];
+    if(!lote) return;
+    const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+    const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+    const total = v1+v2;
+    if(total>0 && total % lote !== 0){
+      const nombreProd = (allCatalogRows().find(c=>c.fila===fila)||{}).nombre || ('producto #'+fila);
+      problemas.push(`${cap(nombreProd)}: Chepito 1 = ${v1}, Chepito 2 = ${v2} (suman ${total}, el molde es de ${lote})`);
+    }
+  });
+  return problemas;
+}
+
 function onConfirmarProduccion(sucursal){
   const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  const problemas = loteProblemas(fechaActual);
+  if(problemas.length){
+    alert('🚫 No se puede confirmar todavía.\n\nHay productos de molde compartido que no cuadran entre Chepito 1 y Chepito 2:\n\n' + problemas.join('\n') + '\n\nCoordinate con la otra sucursal para arreglar las cantidades y volvé a intentar.');
+    return;
+  }
   if(!confirm(`¿Confirmás que ${etiqueta} ya terminó de ingresar toda la producción para el ${formatFechaLarga(fechaActual)}?\n\nDespués de confirmar, los campos quedan bloqueados y no se van a poder cambiar hasta que le des "Desbloquear".`)) return;
   setConfirmacion(fechaActual, sucursal, true);
 }
@@ -727,7 +912,22 @@ async function loadFromSupabase(fecha){
   setStatus('al día', 'ok');
 }
 
-async function guardarCelda(fecha, sucursal, fila, cantidad){
+async function guardarCelda(fecha, sucursal, fila, cantidad, inputEl){
+  // Producto de molde compartido: si no cuadra con la otra sucursal, se RECHAZA (no se guarda)
+  const lote = lotesCompartidos[fila] || 0;
+  if(lote>0 && cantidad>0){
+    const otraSucursal = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+    const etiquetaOtra = otraSucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+    const otraVal = getDatos(fecha, otraSucursal)[fila] || 0;
+    const total = cantidad + otraVal;
+    const nombreProd = (allCatalogRows().find(c=>c.fila===fila)||{}).nombre || 'este producto';
+    if(total % lote !== 0){
+      alert(`🚫 NO SE GUARDÓ — molde compartido\n\n"${cap(nombreProd)}" sale en moldes de ${lote}.\n\nPusiste ${cantidad} y ${etiquetaOtra} tiene ${otraVal} → entre las dos suman ${total}, que NO es múltiplo de ${lote}.\n\nCoordiná con ${etiquetaOtra} por teléfono o en persona para que el total dé ${Math.ceil(total/lote)*lote} o ${Math.max(0,Math.floor(total/lote)*lote)}, y volvé a escribir la cantidad correcta.`);
+      if(inputEl) inputEl.value = getDatos(fecha, sucursal)[fila] || '';
+      return false; // no se guarda nada
+    }
+  }
+
   getDatos(fecha, sucursal)[fila] = cantidad;
   saveLocal(fecha);
 
@@ -755,16 +955,19 @@ async function guardarCelda(fecha, sucursal, fila, cantidad){
 }
 
 // Guarda la cantidad y mueve el cursor al siguiente producto (como al presionar Enter en Excel)
-function guardarCeldaYAvanzar(fecha, sucursal, fila, cantidad, inputEl){
+async function guardarCeldaYAvanzar(fecha, sucursal, fila, cantidad, inputEl){
   const container = inputEl.closest('.view');
   const inputsAntes = container ? Array.from(container.querySelectorAll('input[type=number]')) : [];
   const idx = inputsAntes.indexOf(inputEl);
-  guardarCelda(fecha, sucursal, fila, cantidad);
+  const resultado = await guardarCelda(fecha, sucursal, fila, cantidad, inputEl);
+  if(resultado===false) return; // se rechazó (molde compartido no cuadra) — no avanza, se queda para corregir
   if(container && idx>-1){
     const inputsDespues = Array.from(container.querySelectorAll('input[type=number]'));
-    if(idx+1 < inputsDespues.length){
-      inputsDespues[idx+1].focus();
-      inputsDespues[idx+1].select();
+    let siguiente = idx+1;
+    while(siguiente < inputsDespues.length && inputsDespues[siguiente].disabled) siguiente++;
+    if(siguiente < inputsDespues.length){
+      inputsDespues[siguiente].focus();
+      inputsDespues[siguiente].select();
     }
   }
 }
@@ -846,16 +1049,38 @@ function renderEntrada(sucursal, containerId){
       const val = d[c.fila] || '';
       const codigoActual = codigoDe(c.fila, sucursal);
       const sinCodigo = !codigoActual;
-      const dis = bloqueado ? 'disabled' : '';
-      html += `<div class="fila">
+      const esProductoBloqueado = PRODUCTOS_CANTIDAD_BLOQUEADA.includes(c.fila) && rolActual!=='admin';
+      const dis = (bloqueado || esProductoBloqueado) ? 'disabled' : '';
+      const tituloBloqueo = esProductoBloqueado ? 'Solo Admin puede cambiar esta cantidad' : '';
+
+      const lote = lotesCompartidos[c.fila] || 0;
+      let avisoLote = '';
+      if(lote>0){
+        const otraSucursal = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+        const otraVal = getDatos(fechaActual, otraSucursal)[c.fila] || 0;
+        const total = (val||0) + otraVal;
+        const etiquetaOtra = otraSucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+        if(total>0 && total % lote !== 0){
+          avisoLote = `<div class="aviso-lote mal">🧩 Molde de ${lote} — Chepito 1+2 suman ${total}, no cuadra. Coordiná con ${etiquetaOtra} (tiene ${otraVal}).</div>`;
+        } else if(total>0 && total % lote === 0){
+          avisoLote = `<div class="aviso-lote ok">🧩 Molde de ${lote} — cuadra perfecto (${total} entre las dos sucursales).</div>`;
+        } else {
+          avisoLote = `<div class="aviso-lote info">🧩 Este producto sale en moldes de ${lote} — coordiná con ${etiquetaOtra} antes de pedir.</div>`;
+        }
+      }
+
+      html += `<div class="fila-wrap">
+      <div class="fila">
         <input type="text" class="codigo-input ${sinCodigo?'falta':''}" value="${codigoActual||''}" ${dis}
           placeholder="cód." title="${sinCodigo?'Falta el código — necesario para el TXT':''}"
           onchange="cambiarCodigoSucursal(${c.fila}, '${sucursal}', this.value)">
-        <span class="nombre">${cap(c.nombre)}</span>
-        <input type="number" min="0" step="1" inputmode="numeric" value="${val}" ${dis}
+        <span class="nombre">${cap(c.nombre)}${esProductoBloqueado?' 🔒':''}</span>
+        <input type="number" min="0" step="1" inputmode="numeric" value="${val}" ${dis} title="${tituloBloqueo}"
           data-fila="${c.fila}" data-sucursal="${sucursal}"
-          onchange="guardarCelda(fechaActual,'${sucursal}',${c.fila},parseFloat(this.value)||0)"
+          onchange="guardarCelda(fechaActual,'${sucursal}',${c.fila},parseFloat(this.value)||0,this)"
           onkeydown="if(event.key==='Enter'){event.preventDefault(); guardarCeldaYAvanzar(fechaActual,'${sucursal}',${c.fila},parseFloat(this.value)||0,this);}">
+      </div>
+      ${avisoLote}
       </div>`;
     });
     html += `</div>`;
@@ -1030,7 +1255,7 @@ function renderReceta(){
     if(t>0){ bagRows += `<tr><td>${cap(c.nombre)}</td><td class="num"><strong>${t} u</strong></td></tr>`; bagTotal+=t; }
   });
   if(bagRows){
-    html += `<div class="receta-card"><h3>🥖 Baguette / Mañana-Tarde</h3>
+    html += `<div class="receta-card no-imprimir"><h3>🥖 Baguette / Mañana-Tarde</h3>
       <div class="meta">Conteo del día — ${bagTotal} unidades en total (no lleva fórmula de masa propia)</div>
       <table class="tabla-ing"><tbody>${bagRows}</tbody></table></div>`;
   }
@@ -1101,11 +1326,15 @@ function renderProductos(){
     const opts = FAMILIAS_EDITABLES.map(fm=>
       `<option value="${fm.key}" ${c.familia===fm.key?'selected':''}>${fm.label}</option>`).join('');
     const inactivo = c.activo===false;
+    const lote = lotesCompartidos[c.fila] || '';
     return `<tr style="${inactivo?'opacity:.45;':''}">
       <td>${cap(c.nombre)}${!c.base?' <span style="color:var(--accent2);font-size:11px;">(nuevo)</span>':''}</td>
       <td><input type="number" value="${c.peso}" style="width:70px;padding:4px;border:1px solid var(--line);border-radius:4px;"
             onchange="cambiarPeso(${c.fila}, this.value)"> g</td>
       <td><select onchange="cambiarFamilia(${c.fila}, this.value)">${opts}</select></td>
+      <td><input type="number" min="0" value="${lote}" placeholder="—" title="Tamaño del molde compartido entre Chepito 1 y 2 (0 o vacío = no aplica)"
+            style="width:56px;padding:4px;border:1px solid var(--line);border-radius:4px;"
+            onchange="cambiarLote(${c.fila}, this.value)"></td>
       <td>${inactivo
         ? `<button onclick="restaurarProducto(${c.fila})" style="background:var(--accent2);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;">Restaurar</button>`
         : `<button onclick="quitarProducto(${c.fila})" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;">Quitar</button>`}
@@ -1115,7 +1344,7 @@ function renderProductos(){
 
   cont.innerHTML = formHtml + `
     <table>
-      <thead><tr><th>Producto</th><th>Peso</th><th>Receta / Familia</th><th></th></tr></thead>
+      <thead><tr><th>Producto</th><th>Peso</th><th>Receta / Familia</th><th>Molde compartido</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
@@ -1221,7 +1450,7 @@ function recetaCompletaSnap(snap){
     const t = totalProductoSnap(snap,c.fila).total;
     if(t>0){ bagRows += `<tr><td>${cap(c.nombre)}</td><td class="num"><strong>${t} u</strong></td></tr>`; bagTotal+=t; }
   });
-  if(bagRows) html += `<div class="receta-card"><h3>🥖 Baguette / Mañana-Tarde</h3>
+  if(bagRows) html += `<div class="receta-card no-imprimir"><h3>🥖 Baguette / Mañana-Tarde</h3>
       <div class="meta">${bagTotal} unidades en total</div>
       <table class="tabla-ing"><tbody>${bagRows}</tbody></table></div>`;
 
@@ -1341,6 +1570,27 @@ function descargarTXT(nombreArchivo, contenido){
   URL.revokeObjectURL(url);
 }
 
+function descargarArchivo(nombreArchivo, contenido, mime){
+  const blob = new Blob([contenido], {type:mime+';charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Respaldo completo: guarda TODO lo que tiene la app en este momento (producción de todos
+// los días, catálogo/overrides, códigos por sucursal, confirmaciones, historial e impresos)
+// en un solo archivo JSON descargable.
+function descargarRespaldoCompleto(){
+  const respaldo = {
+    generado: new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'}),
+    datos, overrides, codigosSucursal, confirmaciones, historial, impresos
+  };
+  const contenido = JSON.stringify(respaldo, null, 2);
+  descargarArchivo(`respaldo_chepito_${hoyISO()}.json`, contenido, 'application/json');
+}
+
 // Busca productos con cantidad>0 pero sin código (no se pueden exportar al TXT de QuPOS)
 function productosSinCodigo(sucursales){
   const catalogo = effectiveCatalog();
@@ -1425,6 +1675,11 @@ document.getElementById('fechaSel').addEventListener('change', async e=>{
 /* ====================== INIT ====================== */
 async function init(){
   document.getElementById('fechaSel').value = fechaActual;
+  const rolGuardado = localStorage.getItem('chepito_rol');
+  if(rolGuardado && CLAVES_ROL[rolGuardado]){
+    rolActual = rolGuardado;
+    document.getElementById('loginOverlay').style.display = 'none';
+  }
   if(!useSupabase){
     document.getElementById('configWarning').style.display = 'block';
     document.getElementById('connStatus').textContent = 'modo local (sin compartir)';
@@ -1441,10 +1696,12 @@ async function init(){
   if(useSupabase) await loadImpresosSupabase(fechaActual);
   loadHistorialLocal();
   if(useSupabase) await loadHistorialSupabase();
+  loadLotesLocal();
+  if(useSupabase) await loadLotesSupabase();
   loadLocal(fechaActual);
   if(useSupabase) await loadFromSupabase(fechaActual);
   await aplicarPlantillaBaguetteSiVacio();
-  renderAll();
+  if(rolActual){ aplicarPermisosRol(); } else { renderAll(); }
 }
 init();
 </script>
