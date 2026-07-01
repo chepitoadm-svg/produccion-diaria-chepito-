@@ -154,7 +154,7 @@
     <input type="text" id="buscador" placeholder="Buscar producto...">
     <button id="btnExportar" onclick="onExportarTXT()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">📄 Exportar TXT</button>
     <button id="btnImprimir" onclick="onImprimir()" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ Imprimir</button>
-    <button onclick="descargarRespaldoCompleto()" title="Descarga toda la información de la app (producción, catálogo, historial) en un archivo JSON" style="background:#5a4a3a;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">💾 Respaldo JSON</button>
+    <button id="btnRespaldo" onclick="descargarRespaldoCompleto()" title="Descarga toda la información de la app (producción, catálogo, historial) en un archivo JSON" style="display:none;background:#5a4a3a;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">💾 Respaldo JSON</button>
     <span class="status" id="saveStatus"></span>
   </div>
 
@@ -245,8 +245,8 @@
    3. En Settings > API, copiá tu "Project URL" y tu "anon public key"
       y pegalos abajo.
 ======================================================================= */
-const SUPABASE_URL = "PEGA_AQUI_TU_PROJECT_URL";
-const SUPABASE_KEY = "PEGA_AQUI_TU_ANON_KEY";
+const SUPABASE_URL = "https://fqwxhrxjphvqjtosxizb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FY_EOBRsE77frSsPFSsexA_ZWGc5AQF";
 
 let supa = null;
 let useSupabase = false;
@@ -369,6 +369,7 @@ function aplicarPermisosRol(){
     btn.style.display = permitidas.includes(tab) ? '' : 'none';
   });
   document.getElementById('usuarioActual').textContent = etiquetaRol(rolActual) + ' (cambiar)';
+  document.getElementById('btnRespaldo').style.display = (rolActual==='admin') ? 'inline-block' : 'none';
   // Si la pestaña activa actual no está permitida para este rol, saltar a la primera permitida
   if(!permitidas.includes(tabActiva)){
     tabActiva = permitidas[0];
