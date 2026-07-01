@@ -1072,8 +1072,8 @@ function renderEntrada(sucursal, containerId){
 
       html += `<div class="fila-wrap">
       <div class="fila">
-        <input type="text" class="codigo-input ${sinCodigo?'falta':''}" value="${codigoActual||''}" ${dis}
-          placeholder="cód." title="${sinCodigo?'Falta el código — necesario para el TXT':''}"
+        <input type="text" class="codigo-input ${sinCodigo?'falta':''}" value="${codigoActual||''}" ${rolActual!=='admin'?'disabled':''}
+          placeholder="cód." title="${rolActual!=='admin' ? 'Solo Admin puede cambiar el código' : (sinCodigo?'Falta el código — necesario para el TXT':'')}"
           onchange="cambiarCodigoSucursal(${c.fila}, '${sucursal}', this.value)">
         <span class="nombre">${cap(c.nombre)}${esProductoBloqueado?' 🔒':''}</span>
         <input type="number" min="0" step="1" inputmode="numeric" value="${val}" ${dis} title="${tituloBloqueo}"
