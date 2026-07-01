@@ -242,6 +242,16 @@
    alter table lotes_compartidos enable row level security;
    create policy "acceso publico" on lotes_compartidos for all using (true) with check (true);
 
+   -- Activa "tiempo real": para que los cambios se vean al instante en todas las
+   -- compus sin tener que refrescar la página.
+   alter publication supabase_realtime add table produccion;
+   alter publication supabase_realtime add table confirmaciones;
+   alter publication supabase_realtime add table impresos;
+   alter publication supabase_realtime add table historial_produccion;
+   alter publication supabase_realtime add table codigos_sucursal;
+   alter publication supabase_realtime add table catalogo_overrides;
+   alter publication supabase_realtime add table lotes_compartidos;
+
    3. En Settings > API, copiá tu "Project URL" y tu "anon public key"
       y pegalos abajo.
 ======================================================================= */
@@ -1674,6 +1684,63 @@ document.getElementById('fechaSel').addEventListener('change', async e=>{
 });
 
 /* ====================== INIT ====================== */
+/* ====================== TIEMPO REAL: cambios se ven al instante en todas las compus ====================== */
+function iniciarTiempoReal(){
+  if(!useSupabase) return;
+
+  supa.channel('cambios-produccion')
+    .on('postgres_changes', {event:'*', schema:'public', table:'produccion'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r || r.fecha !== fechaActual) return; // solo nos importa si es del día que estamos viendo
+      if(payload.eventType === 'DELETE'){
+        if(datos[r.fecha] && datos[r.fecha][r.sucursal]) delete datos[r.fecha][r.sucursal][r.fila];
+      } else {
+        getDatos(r.fecha, r.sucursal)[r.fila] = r.cantidad;
+      }
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'confirmaciones'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r || r.fecha !== fechaActual) return;
+      if(!confirmaciones[r.fecha]) confirmaciones[r.fecha] = {};
+      confirmaciones[r.fecha][r.sucursal] = {confirmado:r.confirmado, hora:r.hora};
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'impresos'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r || r.fecha !== fechaActual) return;
+      impresos[r.fecha] = {impreso:r.impreso, hora:r.hora};
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'historial_produccion'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      if(payload.eventType === 'DELETE'){ delete historial[r.fecha]; }
+      else { historial[r.fecha] = {...r.snapshot, guardadoEn:r.guardado_en}; }
+      if(tabActiva==='historial') renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'codigos_sucursal'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      if(!codigosSucursal[r.sucursal]) codigosSucursal[r.sucursal] = {};
+      codigosSucursal[r.sucursal][r.fila] = r.codigo;
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'catalogo_overrides'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      overrides[r.fila] = {nombre:r.nombre, codigo:r.codigo, familia:r.familia, peso:r.peso, activo:r.activo};
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'lotes_compartidos'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      lotesCompartidos[r.fila] = r.lote;
+      renderAll();
+    })
+    .subscribe();
+}
+
 async function init(){
   document.getElementById('fechaSel').value = fechaActual;
   const rolGuardado = localStorage.getItem('chepito_rol');
@@ -1703,6 +1770,7 @@ async function init(){
   if(useSupabase) await loadFromSupabase(fechaActual);
   await aplicarPlantillaBaguetteSiVacio();
   if(rolActual){ aplicarPermisosRol(); } else { renderAll(); }
+  iniciarTiempoReal();
 }
 init();
 </script>
