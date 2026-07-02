@@ -113,11 +113,7 @@
   <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px 26px;max-width:340px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.12);">
     <h2 style="margin:0 0 4px;color:var(--accent);font-size:20px;">🥖 Producción Chepito</h2>
     <p style="margin:0 0 20px;color:var(--muted);font-size:13px;">Elegí tu usuario para entrar</p>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
-      <button onclick="mostrarClave('chepito1')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">🏠 Chepito 1</button>
-      <button onclick="mostrarClave('chepito2')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">🏠 Chepito 2</button>
-      <button onclick="mostrarClave('admin')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">🔑 Admin</button>
-    </div>
+    <div id="loginBotones" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
     <div id="cajaClave" style="display:none;">
       <input type="password" id="claveInput" placeholder="Clave" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:8px;"
         onkeydown="if(event.key==='Enter') intentarLogin()">
@@ -145,6 +141,7 @@
   <button data-tab="receta">Receta del día</button>
   <button data-tab="productos">⚙️ Productos</button>
   <button data-tab="historial">🗂️ Historial</button>
+  <button data-tab="usuarios">👥 Usuarios</button>
 </nav>
 
 <main>
@@ -168,6 +165,7 @@
   <div id="viewReceta" class="view" style="display:none;"></div>
   <div id="viewProductos" class="view" style="display:none;"></div>
   <div id="viewHistorial" class="view" style="display:none;"></div>
+  <div id="viewUsuarios" class="view" style="display:none;"></div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -242,6 +240,14 @@
    alter table lotes_compartidos enable row level security;
    create policy "acceso publico" on lotes_compartidos for all using (true) with check (true);
 
+   create table config (
+     clave text primary key,
+     valor jsonb,
+     updated_at timestamptz default now()
+   );
+   alter table config enable row level security;
+   create policy "acceso publico" on config for all using (true) with check (true);
+
    -- Activa "tiempo real": para que los cambios se vean al instante en todas las
    -- compus sin tener que refrescar la página.
    alter publication supabase_realtime add table produccion;
@@ -267,23 +273,45 @@ try {
   }
 } catch(e) { console.error(e); }
 
-/* ====================== USUARIOS Y PERMISOS ======================
-   Claves de acceso — cambiálas aquí si querés otras.
-   IMPORTANTE: esto es un control simple para uso interno (no es
-   seguridad bancaria), pero evita que cualquiera entre a Historial
-   o cambie el catálogo de productos sin querer.
-===================================================================== */
-const CLAVES_ROL = {
-  chepito1: "chepito1",
-  chepito2: "chepito2",
-  admin: "chepitoadmin"
-};
-// Qué pestañas puede ver/usar cada rol
-const PERMISOS_ROL = {
-  chepito1: ['chepito1','consolidado','receta'],
-  chepito2: ['chepito2','consolidado','receta'],
-  admin: ['chepito1','chepito2','consolidado','receta','productos','historial']
-};
+/* ====================== USUARIOS Y PERMISOS ====================== */
+const DEFAULT_USUARIOS = [
+  {id:'chepito1', label:'🏠 Chepito 1', clave:'chepito1',    permisos:['chepito1','consolidado','receta']},
+  {id:'chepito2', label:'🏠 Chepito 2', clave:'chepito2',    permisos:['chepito2','consolidado','receta']},
+  {id:'admin',    label:'🔑 Admin',     clave:'chepitoadmin', permisos:['chepito1','chepito2','consolidado','receta','productos','historial','usuarios']}
+];
+let usuariosConfig = null;
+function getUsuariosLista(){ return usuariosConfig || DEFAULT_USUARIOS.map(u=>({...u, permisos:[...u.permisos]})); }
+function getUsuario(id){ return getUsuariosLista().find(u=>u.id===id); }
+function getClaveRol(id){ return (getUsuario(id)||{}).clave||''; }
+function getLabelRol(id){ return (getUsuario(id)||{}).label||id; }
+function getPermisosRol(id){ return (getUsuario(id)||{}).permisos||[]; }
+function esAdmin(){ return getPermisosRol(rolActual).includes('usuarios'); }
+function loadUsuariosLocal(){
+  try{ const r=localStorage.getItem('chepito_usuarios_config'); if(r) usuariosConfig=JSON.parse(r); }catch(e){}
+}
+function saveUsuariosLocal(){
+  try{ localStorage.setItem('chepito_usuarios_config', JSON.stringify(getUsuariosLista())); }catch(e){}
+}
+async function loadUsuariosSupabase(){
+  if(!useSupabase) return;
+  const {data,error} = await supa.from('config').select('valor').eq('clave','usuarios_config').maybeSingle();
+  if(error && error.code!=='PGRST116'){ console.error(error); return; }
+  if(data && data.valor) usuariosConfig = data.valor;
+}
+async function saveUsuariosSupabase(){
+  if(!useSupabase) return;
+  const {error} = await supa.from('config').upsert({clave:'usuarios_config', valor:getUsuariosLista()},{onConflict:'clave'});
+  if(error) console.error(error);
+}
+function renderLoginBotones(){
+  const cont = document.getElementById('loginBotones');
+  if(!cont) return;
+  cont.innerHTML = getUsuariosLista().map(u=>
+    `<button onclick="mostrarClave('${u.id}')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">${u.label}</button>`
+  ).join('');
+}
+// PERMISOS_ROL se mantiene por compatibilidad pero no se usa directamente
+const PERMISOS_ROL = {};
 // Productos del Excel (los 12 "base" de baguette, entre semana) cuya CANTIDAD
 // solo puede cambiar Admin — Chepito 1 y Chepito 2 los ven pero no los pueden tocar.
 // Productos del Excel de baguette (los 12 productos base × normal/sábado/domingo = 36)
@@ -353,7 +381,7 @@ function mostrarClave(rol){
 }
 function intentarLogin(){
   const clave = document.getElementById('claveInput').value;
-  if(clave === CLAVES_ROL[rolPendiente]){
+  if(clave === getClaveRol(rolPendiente)){
     rolActual = rolPendiente;
     localStorage.setItem('chepito_rol', rolActual);
     document.getElementById('loginOverlay').style.display = 'none';
@@ -366,25 +394,22 @@ function cerrarSesion(){
   if(!confirm('¿Cambiar de usuario?')) return;
   rolActual = null;
   localStorage.removeItem('chepito_rol');
+  renderLoginBotones();
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('cajaClave').style.display = 'none';
 }
-function etiquetaRol(rol){
-  return rol==='chepito1' ? '🏠 Chepito 1' : rol==='chepito2' ? '🏠 Chepito 2' : '🔑 Admin';
-}
+function etiquetaRol(rol){ return getLabelRol(rol); }
 function aplicarPermisosRol(){
-  const permitidas = PERMISOS_ROL[rolActual] || [];
+  const permitidas = getPermisosRol(rolActual);
   document.querySelectorAll('#navTabs button[data-tab]').forEach(btn=>{
-    const tab = btn.dataset.tab;
-    btn.style.display = permitidas.includes(tab) ? '' : 'none';
+    btn.style.display = permitidas.includes(btn.dataset.tab) ? '' : 'none';
   });
   document.getElementById('usuarioActual').textContent = etiquetaRol(rolActual) + ' (cambiar)';
-  document.getElementById('btnRespaldo').style.display = (rolActual==='admin') ? 'inline-block' : 'none';
-  // Si la pestaña activa actual no está permitida para este rol, saltar a la primera permitida
+  document.getElementById('btnRespaldo').style.display = esAdmin() ? 'inline-block' : 'none';
   if(!permitidas.includes(tabActiva)){
     tabActiva = permitidas[0];
     document.querySelectorAll('#navTabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabActiva));
-    ['chepito1','chepito2','consolidado','receta','productos','historial'].forEach(t=>{
+    ['chepito1','chepito2','consolidado','receta','productos','historial','usuarios'].forEach(t=>{
       document.getElementById('view'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = (t===tabActiva)?'block':'none';
     });
   }
@@ -584,6 +609,26 @@ function fechaISO(date){
 }
 function hoyISO(){ return fechaISO(new Date()); }
 function mananaISO(){ const d=new Date(); d.setDate(d.getDate()+1); return fechaISO(d); }
+function fechaYaConfirmada(fecha){
+  // Usa confirmaciones (estado real) si están cargadas; si no, cae al historial
+  const c = confirmaciones[fecha];
+  if(c){
+    const c1 = c['chepito1'];
+    const c2 = c['chepito2'];
+    return !!(c1 && c1.confirmado && c2 && c2.confirmado);
+  }
+  return !!(historial[fecha] && historial[fecha].guardadoEn);
+}
+function proximaFechaPendiente(){
+  // Retorna la fecha más próxima (desde mañana) que aún no tiene ambas confirmaciones
+  const d = new Date(hoyISO()+'T12:00:00');
+  for(let i=0; i<14; i++){
+    d.setDate(d.getDate()+1);
+    const f = fechaISO(d);
+    if(!fechaYaConfirmada(f)) return f;
+  }
+  return mananaISO();
+}
 function formatFechaLarga(fechaStr){
   return new Date(fechaStr+'T12:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
 }
@@ -620,6 +665,7 @@ async function loadConfirmacionesSupabase(fecha){
   (data||[]).forEach(r=>{ confirmaciones[fecha][r.sucursal] = {confirmado:r.confirmado, hora:r.hora}; });
 }
 async function setConfirmacion(fecha, sucursal, confirmado){
+  if(!confirmado && historial[fecha] && historial[fecha].bloqueadoPorAdmin) return;
   if(!confirmaciones[fecha]) confirmaciones[fecha] = {};
   const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
   confirmaciones[fecha][sucursal] = {confirmado, hora};
@@ -658,10 +704,12 @@ async function loadHistorialSupabase(){
 }
 async function guardarHistorial(fecha){
   const guardadoEn = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  const bloqueadoPorAdmin = historial[fecha] ? (historial[fecha].bloqueadoPorAdmin || false) : false;
   const snapshot = {
     chepito1: {...getDatos(fecha,'chepito1')},
     chepito2: {...getDatos(fecha,'chepito2')},
-    receta: calcularRecetaResumen() // fecha siempre es la fechaActual en el momento de guardar
+    receta: calcularRecetaResumen(), // fecha siempre es la fechaActual en el momento de guardar
+    bloqueadoPorAdmin
   };
   historial[fecha] = {...snapshot, guardadoEn};
   saveHistorialLocal();
@@ -669,6 +717,89 @@ async function guardarHistorial(fecha){
     const {error} = await supa.from('historial_produccion').upsert(
       {fecha, snapshot, guardado_en:guardadoEn}, {onConflict:'fecha'});
     if(error) console.error(error);
+  }
+}
+async function borrarHistorial(fecha){
+  if(!confirm(`¿Borrar el respaldo del ${formatFechaLarga(fecha)}?\n\nEsta acción no se puede deshacer.`)) return;
+  delete historial[fecha];
+  saveHistorialLocal();
+  if(useSupabase){
+    const {error} = await supa.from('historial_produccion').delete().eq('fecha', fecha);
+    if(error){ console.error(error); alert('Error al borrar: ' + error.message); return; }
+  }
+  historialAbierto = null;
+  renderHistorial();
+}
+async function toggleBloqueoAdmin(fecha){
+  if(!historial[fecha]) return;
+  const nuevoBloqueado = !historial[fecha].bloqueadoPorAdmin;
+  historial[fecha].bloqueadoPorAdmin = nuevoBloqueado;
+  saveHistorialLocal();
+  if(useSupabase){
+    const {guardadoEn, ...snapFields} = historial[fecha];
+    const {error} = await supa.from('historial_produccion').upsert(
+      {fecha, snapshot: snapFields, guardado_en: guardadoEn}, {onConflict:'fecha'});
+    if(error){ console.error(error); historial[fecha].bloqueadoPorAdmin = !nuevoBloqueado; renderHistorial(); return; }
+  }
+  renderAll();
+}
+
+async function checkAutoBloqueo(){
+  const ahora = new Date();
+  const fechaHoy = hoyISO();
+  const esMediaDia = ahora.getHours() >= 12;
+  let cambios = false;
+  for(const fecha of Object.keys(historial)){
+    if(historial[fecha].bloqueadoPorAdmin) continue;
+    // Bloquear si la fecha ya pasó, o si es hoy y ya son las 12
+    if(fecha < fechaHoy || (fecha === fechaHoy && esMediaDia)){
+      historial[fecha].bloqueadoPorAdmin = true;
+      cambios = true;
+      if(useSupabase){
+        const {guardadoEn, ...snapFields} = historial[fecha];
+        const {error} = await supa.from('historial_produccion').upsert(
+          {fecha, snapshot: snapFields, guardado_en: guardadoEn}, {onConflict:'fecha'});
+        if(error) console.error('Auto-bloqueo error:', error);
+      }
+    }
+  }
+  // Respaldo automático al mediodía — solo si no se guardó ya hoy
+  if(esMediaDia){
+    const yaHaySnap = historial[fechaHoy] && historial[fechaHoy].respaldoMediodia;
+    if(!yaHaySnap){ await guardarRespaldoMediodia(fechaHoy); cambios = true; }
+  }
+  if(cambios){ saveHistorialLocal(); renderAll(); }
+}
+
+function programarAutoBloqueo(){
+  const ahora = new Date();
+  const proximoMediaDia = new Date(ahora);
+  proximoMediaDia.setHours(12, 0, 0, 0);
+  if(ahora >= proximoMediaDia) proximoMediaDia.setDate(proximoMediaDia.getDate() + 1);
+  const msPara = proximoMediaDia - ahora;
+  setTimeout(()=>{ checkAutoBloqueo(); programarAutoBloqueo(); }, msPara);
+}
+async function guardarRespaldoMediodia(fecha){
+  const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  let snap1 = {}, snap2 = {};
+  if(useSupabase){
+    const {data} = await supa.from('produccion').select('*').eq('fecha', fecha);
+    (data||[]).forEach(r=>{
+      if(r.sucursal==='chepito1') snap1[r.fila]=r.cantidad;
+      else if(r.sucursal==='chepito2') snap2[r.fila]=r.cantidad;
+    });
+  } else {
+    snap1 = {...getDatos(fecha,'chepito1')};
+    snap2 = {...getDatos(fecha,'chepito2')};
+  }
+  if(!historial[fecha]) historial[fecha] = {guardadoEn: null, bloqueadoPorAdmin: false};
+  historial[fecha].respaldoMediodia = {chepito1: snap1, chepito2: snap2, hora};
+  saveHistorialLocal();
+  if(useSupabase){
+    const {guardadoEn, ...snapFields} = historial[fecha];
+    const {error} = await supa.from('historial_produccion').upsert(
+      {fecha, snapshot: snapFields, guardado_en: guardadoEn||hora}, {onConflict:'fecha'});
+    if(error) console.error('Respaldo mediodía error:', error);
   }
 }
 
@@ -748,6 +879,10 @@ function onConfirmarProduccion(sucursal){
   setConfirmacion(fechaActual, sucursal, true);
 }
 function onDesbloquearProduccion(sucursal){
+  if(historial[fechaActual] && historial[fechaActual].bloqueadoPorAdmin){
+    alert('🔒 Esta producción fue bloqueada por el administrador — ya está impresa y en proceso de elaboración.\n\nLo que tenés que ingresar ahora es la producción del día siguiente.\n\nCambiá la fecha arriba para continuar.');
+    return;
+  }
   const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
   if(!confirm(`¿Desbloquear ${etiqueta} para corregir la producción del ${formatFechaLarga(fechaActual)}? Recordá volver a confirmar cuando termines.`)) return;
   setConfirmacion(fechaActual, sucursal, false);
@@ -947,10 +1082,6 @@ async function guardarCelda(fecha, sucursal, fila, cantidad, inputEl){
     alert('⚠️ Ya se había impreso la producción/receta de este día.\n\nComo acabás de cambiar algo, avisale al taller para que vuelvan a imprimir la hoja actualizada.');
     desmarcarImpreso(fecha);
   }
-  // Si ya existía un respaldo confirmado para este día, se actualiza con el cambio
-  if(historial[fecha]){
-    guardarHistorial(fecha);
-  }
 
   renderAll();
   if(!useSupabase) return;
@@ -1036,15 +1167,27 @@ function renderEntrada(sucursal, containerId){
   let html = '';
 
   if(bloqueado){
+    const adminLocked = !!(historial[fechaActual] && historial[fechaActual].bloqueadoPorAdmin);
     html += `<div class="banner-confirmado">
       ✅ <strong>${etiqueta} confirmó</strong> la producción del ${formatFechaLarga(fechaActual)} (${conf.hora}). Los campos están bloqueados.
-      <button onclick="onDesbloquearProduccion('${sucursal}')">🔓 Desbloquear para corregir</button>
+      ${adminLocked
+        ? `<span style="background:#fdecea;color:#8a2c22;border-radius:8px;padding:7px 13px;font-weight:700;font-size:13px;display:inline-block;">🔒 Bloqueado por Admin — ya se imprimió. Ingresá la del día siguiente.</span>`
+        : `<button onclick="onDesbloquearProduccion('${sucursal}')">🔓 Desbloquear para corregir</button>`}
     </div>`;
   } else {
     html += `<div class="banner-pendiente">
       ⏳ Todavía falta confirmar la producción de <strong>${etiqueta}</strong> para el ${formatFechaLarga(fechaActual)}.
       <button onclick="onConfirmarProduccion('${sucursal}')">✅ Ya terminé — Confirmar</button>
     </div>`;
+  }
+
+  if(!esAdmin()){
+    const pendiente = proximaFechaPendiente();
+    if(fechaActual !== pendiente && fechaActual >= hoyISO()){
+      html += `<div style="background:#fdecea;border:2px solid #e74c3c;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:#8a2c22;font-weight:600;">
+        🚨 <strong>Fecha incorrecta:</strong> La producción del <strong>${formatFechaLarga(pendiente)}</strong> todavía no está ingresada. Cambiá la fecha arriba.
+      </div>`;
+    }
   }
 
   GRUPOS.forEach(g=>{
@@ -1060,7 +1203,7 @@ function renderEntrada(sucursal, containerId){
       const val = d[c.fila] || '';
       const codigoActual = codigoDe(c.fila, sucursal);
       const sinCodigo = !codigoActual;
-      const esProductoBloqueado = PRODUCTOS_CANTIDAD_BLOQUEADA.includes(c.fila) && rolActual!=='admin';
+      const esProductoBloqueado = PRODUCTOS_CANTIDAD_BLOQUEADA.includes(c.fila) && !esAdmin();
       const dis = (bloqueado || esProductoBloqueado) ? 'disabled' : '';
       const tituloBloqueo = esProductoBloqueado ? 'Solo Admin puede cambiar esta cantidad' : '';
 
@@ -1082,8 +1225,8 @@ function renderEntrada(sucursal, containerId){
 
       html += `<div class="fila-wrap">
       <div class="fila">
-        <input type="text" class="codigo-input ${sinCodigo?'falta':''}" value="${codigoActual||''}" ${rolActual!=='admin'?'disabled':''}
-          placeholder="cód." title="${rolActual!=='admin' ? 'Solo Admin puede cambiar el código' : (sinCodigo?'Falta el código — necesario para el TXT':'')}"
+        <input type="text" class="codigo-input ${sinCodigo?'falta':''}" value="${codigoActual||''}" ${!esAdmin()?'disabled':''}
+          placeholder="cód." title="${!esAdmin() ? 'Solo Admin puede cambiar el código' : (sinCodigo?'Falta el código — necesario para el TXT':'')}"
           onchange="cambiarCodigoSucursal(${c.fila}, '${sucursal}', this.value)">
         <span class="nombre">${cap(c.nombre)}${esProductoBloqueado?' 🔒':''}</span>
         <input type="number" min="0" step="1" inputmode="numeric" value="${val}" ${dis} title="${tituloBloqueo}"
@@ -1511,17 +1654,21 @@ function renderHistorial(){
         <span style="font-size:12px;font-weight:normal;">
           <span class="estado-sucursal ok" style="margin-right:6px;">✅ Respaldo ${snap.guardadoEn}</span>
           <span class="estado-sucursal ${yaImpreso?'ok':'pendiente'}">${yaImpreso?`🖨️ Impreso ${imp.hora}`:'🖨️ Sin imprimir'}</span>
+          ${snap.bloqueadoPorAdmin ? `<span class="estado-sucursal" style="background:#fdecea;color:#8a2c22;margin-left:6px;">🔒 Bloqueado</span>` : ''}
+          ${esAdmin() ? `<button onclick="event.stopPropagation();toggleBloqueoAdmin('${fecha}')" style="background:${snap.bloqueadoPorAdmin?'var(--accent2)':'#5a4a3a'};color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">${snap.bloqueadoPorAdmin?'🔓 Desbloquear':'🔒 Bloquear'}</button>` : ''}
+          ${esAdmin() ? `<button onclick="event.stopPropagation();borrarHistorial('${fecha}')" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🗑️ Borrar</button>` : ''}
           ${abierto?' ▲':' ▼'}
         </span>
       </h2>`;
 
     if(abierto){
-      html += `<div style="padding:10px 14px;display:flex;gap:8px;">
+      html += `<div style="padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;">
         <button onclick="elegirModoHistorial('${fecha}','consolidado')" style="border:1px solid var(--line);background:${modo==='consolidado'?'var(--accent)':'#fff'};color:${modo==='consolidado'?'#fff':'var(--ink)'};border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">📦 Ver como Consolidado</button>
         <button onclick="elegirModoHistorial('${fecha}','receta')" style="border:1px solid var(--line);background:${modo==='receta'?'var(--accent)':'#fff'};color:${modo==='receta'?'#fff':'var(--ink)'};border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">🧾 Ver como Receta del día</button>
+        ${snap.respaldoMediodia ? `<button onclick="elegirModoHistorial('${fecha}','mediodia')" style="border:1px solid var(--line);background:${modo==='mediodia'?'var(--accent)':'#fff'};color:${modo==='mediodia'?'#fff':'var(--ink)'};border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">📸 Respaldo mediodía (${snap.respaldoMediodia.hora})</button>` : ''}
       </div>
       <div style="padding:0 14px 14px;">
-        ${modo==='consolidado' ? tablaConsolidadoSnap(snap) : recetaCompletaSnap(snap)}
+        ${modo==='mediodia' ? tablaConsolidadoSnap(snap.respaldoMediodia) : modo==='consolidado' ? tablaConsolidadoSnap(snap) : recetaCompletaSnap(snap)}
       </div>`;
     }
     html += `</div>`;
@@ -1640,6 +1787,184 @@ function onExportarTXT(){
 }
 
 
+const TABS_INFO_LISTA = [
+  {id:'chepito1',   label:'Chepito 1'},
+  {id:'chepito2',   label:'Chepito 2'},
+  {id:'consolidado',label:'Consolidado'},
+  {id:'receta',     label:'Receta del día'},
+  {id:'productos',  label:'⚙️ Productos'},
+  {id:'historial',  label:'🗂️ Historial'},
+  {id:'usuarios',   label:'👥 Usuarios'}
+];
+
+function renderUsuarios(){
+  const cont = document.getElementById('viewUsuarios');
+  if(!cont) return;
+  const lista = getUsuariosLista();
+  let html = `<div class="receta-card"><h3>👥 Gestión de usuarios</h3>
+    <div class="meta">Administrá nombres, claves y permisos de cada usuario. Los cambios se sincronizan en todas las compus al instante.</div></div>`;
+
+  lista.forEach(u=>{
+    const permisosHtml = TABS_INFO_LISTA.map(t=>{
+      const tiene = u.permisos.includes(t.id);
+      return `<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:${tiene?'#e8f3e0':'#f2f2f2'};color:${tiene?'#2e5c1a':'#777'};">
+        <input type="checkbox" ${tiene?'checked':''} onchange="togglePermiso('${u.id}','${t.id}',this.checked)" style="accent-color:var(--accent2);width:14px;height:14px;">
+        ${t.label}
+      </label>`;
+    }).join('');
+
+    const esEsteAdmin = u.permisos.includes('usuarios');
+    html += `<div class="grupo" style="margin-bottom:14px;">
+      <h2 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <span>${u.label}</span>
+        ${!esEsteAdmin ? `<button onclick="eliminarUsuario('${u.id}')" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">🗑️ Eliminar usuario</button>` : ''}
+      </h2>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">PERMISOS (PESTAÑAS CON ACCESO):</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${permisosHtml}</div>
+        </div>
+        <div style="border-top:1px solid var(--line);padding-top:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CLAVE ACTUAL:</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input type="password" id="claveVer_${u.id}" value="${u.clave}" readonly
+              style="flex:1;min-width:160px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#f8f5f0;">
+            <button onclick="toggleVerClave('claveVer_${u.id}',this)"
+              style="border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer;">👁 Ver</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--line);padding-top:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CAMBIAR NOMBRE / CLAVE:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="font-size:13px;color:var(--muted);min-width:90px;">Nombre:</label>
+              <input type="text" id="label_${u.id}" value="${u.label}" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="font-size:13px;color:var(--muted);min-width:90px;">Nueva clave:</label>
+              <input type="password" id="clave_${u.id}" placeholder="(dejar en blanco = sin cambios)" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="font-size:13px;color:var(--muted);min-width:90px;">Repetir clave:</label>
+              <input type="password" id="clave2_${u.id}" placeholder="Repetir clave nueva" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+            </div>
+            <div>
+              <button onclick="guardarUsuario('${u.id}')" style="background:var(--accent2);color:#fff;border:none;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer;">💾 Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="grupo" style="margin-bottom:14px;">
+    <h2>➕ Agregar nuevo usuario</h2>
+    <div style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;color:var(--muted);min-width:90px;">ID (sin espacios):</label>
+        <input type="text" id="nuevo_id" placeholder="ej: chepito3" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;color:var(--muted);min-width:90px;">Nombre visible:</label>
+        <input type="text" id="nuevo_label" placeholder="ej: 🏠 Chepito 3" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;color:var(--muted);min-width:90px;">Clave:</label>
+        <input type="password" id="nuevo_clave" placeholder="Clave de acceso" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;">PERMISOS INICIALES:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${TABS_INFO_LISTA.map(t=>`<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#f2f2f2;color:#777;">
+            <input type="checkbox" id="nuevo_perm_${t.id}" style="accent-color:var(--accent2);width:14px;height:14px;"> ${t.label}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div>
+        <button onclick="agregarUsuario()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer;">➕ Crear usuario</button>
+      </div>
+    </div>
+  </div>`;
+
+  cont.innerHTML = html;
+}
+
+function toggleVerClave(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='🙈 Ocultar'; }
+  else { inp.type='password'; btn.textContent='👁 Ver'; }
+}
+
+async function togglePermiso(userId, tabId, checked){
+  const lista = getUsuariosLista();
+  const u = lista.find(x=>x.id===userId);
+  if(!u) return;
+  if(checked){ if(!u.permisos.includes(tabId)) u.permisos.push(tabId); }
+  else { u.permisos = u.permisos.filter(p=>p!==tabId); }
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  if(rolActual===userId) aplicarPermisosRol();
+}
+
+async function guardarUsuario(userId){
+  const lista = getUsuariosLista();
+  const u = lista.find(x=>x.id===userId);
+  if(!u) return;
+  const labelEl = document.getElementById('label_'+userId);
+  const claveEl = document.getElementById('clave_'+userId);
+  const clave2El = document.getElementById('clave2_'+userId);
+  if(labelEl && labelEl.value.trim()) u.label = labelEl.value.trim();
+  const nuevaClave = claveEl ? claveEl.value : '';
+  const repetir = clave2El ? clave2El.value : '';
+  if(nuevaClave){
+    if(nuevaClave.length < 4){ alert('La clave debe tener al menos 4 caracteres.'); return; }
+    if(nuevaClave !== repetir){ alert('Las claves no coinciden.'); return; }
+    u.clave = nuevaClave;
+    if(claveEl) claveEl.value = '';
+    if(clave2El) clave2El.value = '';
+  }
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  renderLoginBotones();
+  renderUsuarios();
+  alert('✅ Cambios guardados correctamente.');
+}
+
+async function eliminarUsuario(userId){
+  if(!confirm(`¿Seguro que querés eliminar el usuario "${getLabelRol(userId)}"?`)) return;
+  const lista = getUsuariosLista().filter(u=>u.id!==userId);
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  renderLoginBotones();
+  renderUsuarios();
+}
+
+async function agregarUsuario(){
+  const id = (document.getElementById('nuevo_id').value||'').trim().replace(/\s+/g,'');
+  const label = (document.getElementById('nuevo_label').value||'').trim();
+  const clave = (document.getElementById('nuevo_clave').value||'').trim();
+  if(!id){ alert('El ID no puede estar vacío.'); return; }
+  if(!label){ alert('El nombre visible no puede estar vacío.'); return; }
+  if(clave.length < 4){ alert('La clave debe tener al menos 4 caracteres.'); return; }
+  const lista = getUsuariosLista();
+  if(lista.find(u=>u.id===id)){ alert('Ya existe un usuario con ese ID.'); return; }
+  const permisos = TABS_INFO_LISTA.map(t=>t.id).filter(tid=>{
+    const el = document.getElementById('nuevo_perm_'+tid);
+    return el && el.checked;
+  });
+  lista.push({id, label, clave, permisos});
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  renderLoginBotones();
+  renderUsuarios();
+  alert('✅ Usuario creado correctamente.');
+}
+
 function renderAll(){
   if(tabActiva==='chepito1') renderEntrada('chepito1','viewChepito1');
   if(tabActiva==='chepito2') renderEntrada('chepito2','viewChepito2');
@@ -1647,6 +1972,7 @@ function renderAll(){
   if(tabActiva==='receta') renderReceta();
   if(tabActiva==='productos') renderProductos();
   if(tabActiva==='historial') renderHistorial();
+  if(tabActiva==='usuarios') renderUsuarios();
   document.getElementById('btnExportar').style.display =
     ['chepito1','chepito2'].includes(tabActiva) ? 'inline-block' : 'none';
   document.getElementById('btnImprimir').style.display =
@@ -1661,7 +1987,7 @@ document.getElementById('navTabs').addEventListener('click', e=>{
   if(!btn) return;
   tabActiva = btn.dataset.tab;
   document.querySelectorAll('#navTabs button').forEach(b=>b.classList.toggle('active', b===btn));
-  ['chepito1','chepito2','consolidado','receta','productos','historial'].forEach(t=>{
+  ['chepito1','chepito2','consolidado','receta','productos','historial','usuarios'].forEach(t=>{
     document.getElementById('view'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = (t===tabActiva)?'block':'none';
   });
   renderAll();
@@ -1673,7 +1999,29 @@ document.getElementById('buscador').addEventListener('input', e=>{
 });
 
 document.getElementById('fechaSel').addEventListener('change', async e=>{
-  fechaActual = e.target.value;
+  const nuevaFecha = e.target.value;
+  if(!esAdmin()){
+    const pendiente = proximaFechaPendiente();
+    if(nuevaFecha !== pendiente && nuevaFecha >= hoyISO()){
+      const esPasado = nuevaFecha < pendiente;
+      const msg = esPasado
+        ? `⚠️ Seleccionaste ${formatFechaLarga(nuevaFecha)}, que ya pasó.\n\nLa producción que falta ingresar es la del ${formatFechaLarga(pendiente)}.\n\n¿Querés ir a esa fecha?`
+        : `⚠️ Seleccionaste ${formatFechaLarga(nuevaFecha)}, pero la producción del ${formatFechaLarga(pendiente)} todavía no está ingresada.\n\n¿Querés ir al ${formatFechaLarga(pendiente)} primero?`;
+      if(confirm(msg)){
+        e.target.value = pendiente;
+        fechaActual = pendiente;
+        loadLocal(fechaActual);
+        if(useSupabase){
+          await loadFromSupabase(fechaActual);
+          await loadConfirmacionesSupabase(fechaActual);
+          await loadImpresosSupabase(fechaActual);
+        }
+        renderAll();
+        return;
+      }
+    }
+  }
+  fechaActual = nuevaFecha;
   loadLocal(fechaActual);
   if(useSupabase){
     await loadFromSupabase(fechaActual);
@@ -1717,7 +2065,7 @@ function iniciarTiempoReal(){
       if(!r) return;
       if(payload.eventType === 'DELETE'){ delete historial[r.fecha]; }
       else { historial[r.fecha] = {...r.snapshot, guardadoEn:r.guardado_en}; }
-      if(tabActiva==='historial') renderAll();
+      if(tabActiva==='historial' || r.fecha === fechaActual) renderAll();
     })
     .on('postgres_changes', {event:'*', schema:'public', table:'codigos_sucursal'}, payload => {
       const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
@@ -1744,7 +2092,7 @@ function iniciarTiempoReal(){
 async function init(){
   document.getElementById('fechaSel').value = fechaActual;
   const rolGuardado = localStorage.getItem('chepito_rol');
-  if(rolGuardado && CLAVES_ROL[rolGuardado]){
+  if(rolGuardado && getUsuario(rolGuardado)){
     rolActual = rolGuardado;
     document.getElementById('loginOverlay').style.display = 'none';
   }
@@ -1754,12 +2102,18 @@ async function init(){
   } else {
     document.getElementById('connStatus').textContent = 'conectado a Supabase';
   }
+  loadUsuariosLocal();
+  if(useSupabase) await loadUsuariosSupabase();
+  renderLoginBotones();
   loadOverridesLocal();
   if(useSupabase) await loadOverridesSupabase();
   loadCodigosLocal();
   if(useSupabase) await loadCodigosSupabase();
   loadConfirmacionesLocal();
-  if(useSupabase) await loadConfirmacionesSupabase(fechaActual);
+  if(useSupabase){
+    await loadConfirmacionesSupabase(fechaActual);
+    if(mananaISO() !== fechaActual) await loadConfirmacionesSupabase(mananaISO());
+  }
   loadImpresosLocal();
   if(useSupabase) await loadImpresosSupabase(fechaActual);
   loadHistorialLocal();
@@ -1771,6 +2125,8 @@ async function init(){
   await aplicarPlantillaBaguetteSiVacio();
   if(rolActual){ aplicarPermisosRol(); } else { renderAll(); }
   iniciarTiempoReal();
+  checkAutoBloqueo();
+  programarAutoBloqueo();
 }
 init();
 </script>
