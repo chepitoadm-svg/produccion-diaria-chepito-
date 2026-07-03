@@ -1291,34 +1291,50 @@ function estadoConfirmacionHTML(){
 function renderConsolidado(){
   const cont = document.getElementById('viewConsolidado');
   const f = filtro.trim().toLowerCase();
-  let rows = '';
-  let granTotal = 0;
-  let filas = 0;
+  // La familia baguette (baguette, manitas, lagartos, puntas, trillizos, la nación, la teja...)
+  // se ve en pantalla en su propia sección, pero NO sale en la hoja impresa.
+  let rows = '', bagRows = '';
+  let granTotal = 0, bagTotal = 0;
+  let filas = 0, bagFilas = 0;
   let html = estadoConfirmacionHTML() + avisoLotesHTML();
   effectiveCatalog().forEach(c=>{
     if(f && !c.nombre.toLowerCase().includes(f)) return;
     if(loteDescuadrado(fechaActual, c.fila)) return; // molde compartido descuadrado: fuera de la programación
     const t = totalProducto(c.fila);
     if(t.total<=0) return;
-    filas++;
-    granTotal += t.total;
     const cod1 = codigoDe(c.fila,'chepito1');
     const cod2 = codigoDe(c.fila,'chepito2');
     const codTxt = (cod1===cod2) ? (cod1||'') : `<span title="Chepito 1">${cod1||'—'}</span> / <span title="Chepito 2">${cod2||'—'}</span>`;
-    rows += `<tr><td>${codTxt}</td><td>${cap(c.nombre)}</td>
+    const tr = `<tr><td>${codTxt}</td><td>${cap(c.nombre)}</td>
       <td class="num">${t.c1||''}</td><td class="num">${t.c2||''}</td>
       <td class="num"><strong>${t.total||''}</strong></td></tr>`;
+    if(c.familia==='baguette'){ bagFilas++; bagTotal += t.total; bagRows += tr; }
+    else { filas++; granTotal += t.total; rows += tr; }
   });
-  if(filas===0){
+  if(filas===0 && bagFilas===0){
     cont.innerHTML = html + '<div class="empty" style="padding:30px;">No hay producción registrada para este día todavía.</div>';
     return;
   }
-  cont.innerHTML = html + `
+  if(filas>0){
+    html += `
     <table>
       <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="total"><td colspan="4">TOTAL UNIDADES</td><td class="num">${granTotal}</td></tr></tfoot>
     </table>`;
+  }
+  if(bagFilas>0){
+    html += `
+    <div class="no-imprimir" style="margin-top:14px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">🥖 <strong>Baguette / Mañana-Tarde</strong> — solo se ve en pantalla, NO sale en la hoja impresa.</div>
+      <table>
+        <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
+        <tbody>${bagRows}</tbody>
+        <tfoot><tr class="total"><td colspan="4">TOTAL BAGUETTE</td><td class="num">${bagTotal}</td></tr></tfoot>
+      </table>
+    </div>`;
+  }
+  cont.innerHTML = html;
 }
 
 /* ====================== RECETA (replica fórmulas de pdcon) ====================== */
@@ -1562,25 +1578,44 @@ function sumFamiliaSnap(snap, fam){
   return {unidades: totalUnid, gramos: totalPeso, items};
 }
 
-// Tabla idéntica a la pestaña Consolidado, pero con los datos guardados del respaldo
+// Tabla idéntica a la pestaña Consolidado, pero con los datos guardados del respaldo.
+// Igual que en el Consolidado del día: la familia baguette se ve en pantalla
+// en su propia sección pero NO sale en la hoja impresa.
 function tablaConsolidadoSnap(snap){
-  let rows = '', granTotal = 0, filas = 0;
+  let rows = '', bagRows = '';
+  let granTotal = 0, bagTotal = 0;
+  let filas = 0, bagFilas = 0;
   effectiveCatalog().forEach(c=>{
     const t = totalProductoSnap(snap, c.fila);
     if(t.total<=0) return;
-    filas++; granTotal += t.total;
     const cod1 = codigoDe(c.fila,'chepito1'), cod2 = codigoDe(c.fila,'chepito2');
     const codTxt = (cod1===cod2) ? (cod1||'') : `<span title="Chepito 1">${cod1||'—'}</span> / <span title="Chepito 2">${cod2||'—'}</span>`;
-    rows += `<tr><td>${codTxt}</td><td>${cap(c.nombre)}</td>
+    const tr = `<tr><td>${codTxt}</td><td>${cap(c.nombre)}</td>
       <td class="num">${t.c1||''}</td><td class="num">${t.c2||''}</td>
       <td class="num"><strong>${t.total||''}</strong></td></tr>`;
+    if(c.familia==='baguette'){ bagFilas++; bagTotal += t.total; bagRows += tr; }
+    else { filas++; granTotal += t.total; rows += tr; }
   });
-  if(filas===0) return '<div class="empty" style="padding:30px;">Este respaldo no tiene productos.</div>';
-  return `<table>
+  if(filas===0 && bagFilas===0) return '<div class="empty" style="padding:30px;">Este respaldo no tiene productos.</div>';
+  let html = '';
+  if(filas>0){
+    html += `<table>
       <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="total"><td colspan="4">TOTAL UNIDADES</td><td class="num">${granTotal}</td></tr></tfoot>
     </table>`;
+  }
+  if(bagFilas>0){
+    html += `<div class="no-imprimir" style="margin-top:14px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">🥖 <strong>Baguette / Mañana-Tarde</strong> — solo se ve en pantalla, NO sale en la hoja impresa.</div>
+      <table>
+        <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
+        <tbody>${bagRows}</tbody>
+        <tfoot><tr class="total"><td colspan="4">TOTAL BAGUETTE</td><td class="num">${bagTotal}</td></tr></tfoot>
+      </table>
+    </div>`;
+  }
+  return html;
 }
 
 // Receta completa idéntica a la pestaña Receta del día, pero con los datos guardados del respaldo
