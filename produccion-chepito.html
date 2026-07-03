@@ -1,998 +1,546 @@
 <!DOCTYPE html>
-<html lang="es-CR">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chepito · Panadería</title>
+<title>Producción Chepito</title>
 <style>
-
   :root{
-    --bg:#EBE4D6;          /* trigo / kraft */
-    --surface:#FCFAF6;     /* tarjeta crema */
-    --surface-2:#F3EDE2;   /* inset / inputs */
-    --ink:#2A211C;         /* café tostado */
-    --ink-soft:#7A6E60;    /* texto secundario */
-    --line:#DDD3C2;        /* hairline cálido */
-    --accent:#A6651E;      /* corteza / miel */
-    --accent-soft:#F0E2CC;
-    --good:#2F7A4F;        /* margen sano */
-    --good-bg:#E4EFE6;
-    --bad:#B23A3A;         /* pierde / costo */
-    --bad-bg:#F4E2DF;
-    --shadow:0 1px 2px rgba(42,33,28,.05), 0 4px 14px rgba(42,33,28,.06);
+    --bg:#faf7f2; --card:#ffffff; --ink:#2b1d14; --muted:#8a7665;
+    --line:#ece3d8; --accent:#b5651d; --accent2:#7a9e4f; --warn:#c0392b;
+    --radius:10px;
   }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{
-    background:var(--bg); color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    font-size:15px; line-height:1.45; padding:18px 14px 60px;
-    -webkit-font-smoothing:antialiased;
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:var(--accent);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  header h1{font-size:18px;margin:0;font-weight:700;}
+  header .sub{font-size:12px;opacity:.9;}
+  header .status{color:#fff;opacity:.9;}
+  nav{display:flex;gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:10;}
+  nav button{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:20px;font-size:13px;cursor:pointer;font-weight:600;}
+  nav button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  main{max-width:880px;margin:0 auto;padding:14px 12px 60px;}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  .bar input[type=date]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;}
+  .bar input[type=text]{flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;}
+  .status{font-size:12px;color:var(--muted);}
+  .status.ok{color:var(--accent2);}
+  .status.err{color:var(--warn);}
+  .grupo{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;}
+  .grupo h2{margin:0;padding:10px 14px;font-size:14px;background:#f4ede3;border-bottom:1px solid var(--line);color:var(--accent);}
+  .fila{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);}
+  .fila:last-child{border-bottom:none;}
+  .fila-wrap:last-child .fila{border-bottom:none;}
+  .aviso-lote{padding:5px 14px 8px;font-size:11px;border-bottom:1px solid var(--line);}
+  .fila-wrap:last-child .aviso-lote{border-bottom:none;}
+  .aviso-lote.info{background:#fff8e8;color:#8a6d3b;}
+  .aviso-lote.ok{background:#e8f3e0;color:#2e5c1a;}
+  .aviso-lote.mal{background:#fdecea;color:#8a2c22;font-weight:700;}
+  .fila .nombre{flex:1;font-size:14px;}
+  .fila .codigo{font-size:11px;color:var(--muted);width:46px;}
+  .codigo-input{font-size:11px;color:var(--muted);width:48px;padding:6px 4px;border:1px solid var(--line);border-radius:6px;text-align:center;flex-shrink:0;}
+  .codigo-input.falta{border-color:var(--warn);background:#fdecea;color:var(--warn);font-weight:700;}
+  .codigo-input:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  .fila input[type=number]{width:72px;padding:7px;border:1px solid var(--line);border-radius:6px;font-size:15px;text-align:center;}
+  .fila input[type=number]:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;}
+  .tabla-prod{width:auto;max-width:640px;margin:8px auto 6px;border-radius:0;}
+  .tabla-prod th,.tabla-prod td{padding:6px 16px;}
+  .tabla-prod td.num,.tabla-prod th{white-space:nowrap;}
+  .tabla-prod td.centro,.tabla-prod th.centro{text-align:center;white-space:nowrap;}
+  th,td{padding:8px 10px;text-align:left;font-size:13px;border-bottom:1px solid var(--line);}
+  th{background:#f4ede3;color:var(--accent);font-size:12px;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tr.total td{font-weight:700;background:#faf3e8;}
+  .receta-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;}
+  .receta-card h3{margin:0 0 4px;color:var(--accent);font-size:15px;}
+  .receta-card .meta{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .tabla-ing{width:auto;max-width:340px;margin:4px auto 0;border-collapse:collapse;}
+  .tabla-ing td{padding:5px 8px;font-size:14px;border-bottom:1px dashed var(--line);}
+  .tabla-ing td:first-child{white-space:nowrap;}
+  .tabla-ing td.num{text-align:right;font-variant-numeric:tabular-nums;padding-left:18px;}
+  .tabla-ing tr:last-child td{border-bottom:none;font-weight:700;color:var(--accent);border-top:2px solid var(--ink);}
+  .save-fab{position:fixed;bottom:18px;right:18px;background:var(--accent2);color:#fff;border:none;border-radius:24px;padding:14px 22px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer;}
+  .empty{padding:20px;text-align:center;color:var(--muted);font-size:13px;}
+  .config-box{background:#fff3cd;border:1px solid #ffe08a;border-radius:8px;padding:12px;font-size:13px;margin-bottom:14px;}
+  .banner-pendiente,.banner-confirmado{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:14px;}
+  .banner-pendiente{background:#fdecea;border:1px solid #f1a9a0;color:#8a2c22;}
+  .banner-confirmado{background:#e8f3e0;border:1px solid #a9d18e;color:#2e5c1a;}
+  .banner-pendiente button,.banner-confirmado button{border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;}
+  .banner-pendiente button{background:var(--warn);}
+  .banner-confirmado button{background:#8a6d3b;}
+  .codigo-input[disabled],input[type=number][disabled]{background:#f2f2f2;color:#999;cursor:not-allowed;}
+  .estado-sucursal{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;font-weight:700;}
+  .estado-sucursal.ok{background:#e8f3e0;color:#2e5c1a;}
+  .estado-sucursal.pendiente{background:#fdecea;color:#8a2c22;}
+  .config-box code{background:#fff;padding:1px 4px;border-radius:4px;}
+  @media(max-width:480px){
+    header h1{font-size:16px;}
+    .codigo-input{width:38px;font-size:10px;}
   }
-  .num{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
-  .wrap{max-width:980px;margin:0 auto}
-
-  /* header */
-  header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:18px}
-  .brand h1{margin:0;font-size:24px;letter-spacing:-.02em;font-weight:800}
-  .brand h1 b{color:var(--accent);font-weight:800}
-  .brand p{margin:2px 0 0;color:var(--ink-soft);font-size:12.5px}
-  .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .saved{font-size:11.5px;color:var(--good);opacity:0;transition:opacity .25s}
-  .saved.on{opacity:1}
-
-  .btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);
-    padding:7px 12px;border-radius:7px;cursor:pointer;transition:background .15s,border-color .15s}
-  .btn:hover{background:var(--surface-2)}
-  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn-accent:hover{background:#8f561a}
-  .btn-sm{padding:4px 9px;font-size:12px;border-radius:6px}
-  .btn-danger{color:var(--bad);border-color:#e6c9c5}
-  .btn-danger:hover{background:var(--bad-bg)}
-
-  /* tabs */
-  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px}
-  .tab{font:inherit;font-size:14px;font-weight:600;color:var(--ink-soft);background:none;border:none;
-    padding:10px 14px;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px}
-  .tab .count{font-size:11px;color:var(--ink-soft);background:var(--surface-2);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600}
-  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-  .tab[aria-selected="true"] .count{background:var(--accent-soft);color:var(--accent)}
-  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:6px}
-
-  .panel{display:none}
-  .panel.active{display:block;animation:fade .2s ease}
-  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
-  .card h2{margin:0 0 2px;font-size:15px;font-weight:700}
-  .card .sub{color:var(--ink-soft);font-size:12.5px;margin:0 0 14px}
-
-  /* forms */
-  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
-  .field{display:flex;flex-direction:column;gap:4px;min-width:0}
-  .field label{font-size:12px;font-weight:600;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
-  .field input,.field select{font:inherit;font-size:14px;background:var(--surface-2);border:1px solid var(--line);
-    border-radius:7px;padding:8px 10px;color:var(--ink);width:100%}
-  .field input:focus,.field select:focus{outline:2px solid var(--accent);outline-offset:0;background:#fff}
-  .info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;
-    border:1px solid var(--ink-soft);color:var(--ink-soft);font-size:9px;font-weight:700;cursor:help;line-height:1}
-  .hint{font-size:11.5px;color:var(--ink-soft)}
-  .formrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .err{color:var(--bad);font-size:12px;margin-top:8px;min-height:0}
-
-  /* componentes builder */
-  .compbuild{border:1px dashed var(--line);border-radius:8px;padding:12px;margin-top:6px;background:var(--surface-2)}
-  .compbuild .addrow{display:grid;gap:8px;grid-template-columns:2fr 1fr 1fr auto;align-items:end}
-  .lines{margin-top:10px;display:flex;flex-direction:column;gap:1px}
-  .lineitem{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;
-    padding:7px 4px;border-bottom:1px solid var(--line);font-size:13.5px}
-  .lineitem:last-child{border-bottom:none}
-  .lineitem .qty{color:var(--ink-soft);font-size:12.5px}
-  .lineitem .lc{justify-self:end}
-  .xbtn{border:none;background:none;color:var(--ink-soft);cursor:pointer;font-size:15px;padding:0 4px;line-height:1}
-  .xbtn:hover{color:var(--bad)}
-  .subtotal{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding-top:10px;border-top:2px solid var(--line)}
-  .subtotal .lbl{font-size:12.5px;color:var(--ink-soft);font-weight:600}
-  .subtotal .val{font-size:16px;font-weight:700}
-
-  /* listas */
-  .listhead{font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px}
-  .irow{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;
-    background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:11px 14px;margin-bottom:8px}
-  .irow .nm{font-weight:600;min-width:0}
-  .irow .nm small{display:block;color:var(--ink-soft);font-weight:400;font-size:12px}
-  .irow .price{text-align:right;font-size:13.5px}
-  .irow .price small{display:block;color:var(--ink-soft);font-size:11px}
-  .irow .ops{display:flex;gap:6px}
-
-  /* ficha de costo (producto) */
-  .ficha{background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);
-    padding:0;margin-bottom:12px;overflow:hidden}
-  .ficha .fh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
-    padding:14px 16px;background:linear-gradient(0deg,var(--surface),var(--surface-2))}
-  .ficha .fh .ttl{font-size:16px;font-weight:700}
-  .ficha .fh .ttl .ops{display:flex;gap:6px;margin-top:8px}
-  .ficha .fh .cost{text-align:right}
-  .ficha .fh .cost .c{font-size:21px;font-weight:800}
-  .ficha .fh .cost .l{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
-  .badge{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;margin-top:6px}
-  .badge.good{background:var(--good-bg);color:var(--good)}
-  .badge.bad{background:var(--bad-bg);color:var(--bad)}
-  .badge.neu{background:var(--surface-2);color:var(--ink-soft)}
-  .ficha .fl{padding:6px 16px 12px}
-  .ficha .fl .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}
-  .ficha .fl .row:last-of-type{border-bottom:none}
-  .ficha .fl .row .q{color:var(--ink-soft);font-size:12.5px;text-align:right}
-  .ficha .fl .row .v{text-align:right}
-  .ficha .fl .totrow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 0 2px;margin-top:4px;border-top:2px solid var(--line)}
-  .ficha .fl .totrow .k{font-weight:700;font-size:13px}
-  .ficha .fl .totrow .v{text-align:right;font-weight:700}
-  .ficha .fl .totrow.muted .k,.ficha .fl .totrow.muted .v{font-weight:500;color:var(--ink-soft);border:none}
-  .ficha .fl .totrow.muted{border-top:none;padding-top:2px}
-
-  .empty{border:1.5px dashed var(--line);border-radius:10px;padding:30px 20px;text-align:center;color:var(--ink-soft);background:var(--surface)}
-  .empty p{margin:0 0 12px;font-size:13.5px}
-  .warn-circ{color:var(--bad);font-size:12.5px;font-weight:600}
-
-  .seedbar{background:var(--accent-soft);border:1px solid #e3cfa9;border-radius:9px;padding:10px 14px;margin-bottom:16px;
-    display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:#6b4514}
-
-  @media (max-width:620px){
-    .compbuild .addrow{grid-template-columns:1fr 1fr;gap:8px}
-    .compbuild .addrow .addbtnwrap{grid-column:1/-1}
-    .compbuild .addrow .addbtnwrap .btn{width:100%}
-    .ficha .fh{flex-direction:column}
-    .ficha .fh .cost{text-align:left}
+  @media print{
+    @page{margin:10mm;size:letter;}
+    nav, .bar, #configWarning, .save-fab, header .status{display:none !important;}
+    .no-imprimir{display:none !important;}
+    .banner-pendiente button, .banner-confirmado button{display:none !important;}
+    .banner-pendiente, .banner-confirmado{-webkit-print-color-adjust:exact;print-color-adjust:exact;border:1px solid #999;break-inside:avoid;}
+    header{background:#fff;color:var(--ink);padding:0 0 6px;margin-bottom:8px;border-bottom:2px solid var(--ink);}
+    header h1{font-size:17px;}
+    header .sub{color:var(--ink);opacity:1;font-size:11px;}
+    body{background:#fff;font-size:12px;}
+    main{max-width:100%;padding:0;margin:0;}
+    .grupo, .receta-card{border:1px solid #999;box-shadow:none;border-radius:0;}
+    .grupo{break-inside:avoid;}
+    .grupo h2{background:#eee !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .receta-card{page-break-after:always;break-after:page;break-inside:avoid;padding:0 0 4px;border:none;}
+    .receta-card:last-child{page-break-after:auto;break-after:auto;}
+    .receta-card h3{font-size:16px;border-bottom:2px solid var(--ink);padding-bottom:4px;margin-bottom:5px;}
+    .receta-card .meta{font-size:11px;margin-bottom:6px;}
+    table{break-inside:auto;width:100%;border:1px solid #999;font-size:11px;}
+    th,td{padding:3px 6px;}
+    tr{break-inside:avoid;}
+    th{background:#eee !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;border:1px solid #999;}
+    td{border:1px solid #ccc;}
+    .tabla-ing{font-size:11px;max-width:280px;}
+    .tabla-ing td{padding:3px 6px;}
+    div[style*="margin-top:10px"]{margin-top:6px !important;font-size:11px !important;}
   }
-  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-
-
-/* ===================== SHELL (hub que junta las 3 apps) ===================== */
-body{padding:0 !important;}
-.mainnav{position:sticky;top:0;z-index:60;display:flex;gap:6px;flex-wrap:wrap;
-  background:var(--surface);border-bottom:1px solid var(--line);padding:10px 14px;box-shadow:var(--shadow)}
-.mainnav button{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);
-  background:var(--surface);color:var(--ink-soft);padding:8px 16px;border-radius:22px;cursor:pointer;transition:background .15s,color .15s}
-.mainnav button:hover{background:var(--surface-2)}
-.mainnav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.mainpanel{padding:16px 14px 60px}
-.mainpanel[hidden]{display:none}
-#prodFrame{width:100%;height:calc(100vh - 130px);min-height:520px;border:1px solid var(--line);border-radius:10px;background:#fff}
-.prodbar{max-width:980px;margin:0 auto 10px;display:flex;justify-content:space-between;align-items:center;gap:12px;
-  font-size:13px;color:var(--ink-soft);flex-wrap:wrap}
-
-/* ===================== Gasto: barra de período ===================== */
-.gctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{font:inherit;font-size:13px;font-weight:700;border:none;background:var(--surface);color:var(--ink-soft);padding:8px 16px;cursor:pointer}
-.seg button+button{border-left:1px solid var(--line)}
-.seg button.on{background:var(--accent);color:#fff}
-#g_perlabel{min-width:180px;text-align:center;font-weight:800;font-size:14px}
-#g_date{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);color:var(--ink)}
-
-/* ===================== Gasto mensual ===================== */
-.gt{width:100%;border-collapse:collapse;font-size:13.5px}
-.gt th,.gt td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-.gt thead th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:700}
-.gt td.num,.gt th.num{text-align:right;font-variant-numeric:tabular-nums}
-.gt tfoot tr.tot td{font-weight:800;border-top:2px solid var(--line);border-bottom:none;background:var(--surface-2)}
-.gt tr.clickable{cursor:pointer}
-.gt tr.clickable:hover{background:var(--accent-soft)}
-.gt tr.sel td{background:var(--accent-soft)}
-.gt tr.pend td{color:var(--ink-soft)}
-.gt select,.gt input[type=number]{font:inherit;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;color:var(--ink);max-width:100%}
-.bignum{font-size:32px;font-weight:800;letter-spacing:-.02em;color:var(--accent);line-height:1.1}
-.pend{color:var(--bad)}
-details.card > summary{cursor:pointer;font-weight:700;font-size:15px;list-style:none}
-details.card > summary::-webkit-details-marker{display:none}
-details.card > summary::before{content:'\25B8  ';color:var(--ink-soft)}
-details.card[open] > summary::before{content:'\25BE  '}
-
 </style>
 </head>
 <body>
-<div class="mainnav">
-  <button data-main="gasto" class="active">📊 Gasto materia prima</button>
-  <button data-main="costos">💰 Costos</button>
-  <button data-main="produccion">🥖 Producción</button>
+
+<div id="loginOverlay" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px 26px;max-width:340px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.12);">
+    <h2 style="margin:0 0 4px;color:var(--accent);font-size:20px;">🥖 Producción Chepito</h2>
+    <p style="margin:0 0 20px;color:var(--muted);font-size:13px;">Elegí tu usuario para entrar</p>
+    <div id="loginBotones" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+    <div id="cajaClave" style="display:none;">
+      <input type="password" id="claveInput" placeholder="Clave" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:8px;"
+        onkeydown="if(event.key==='Enter') intentarLogin()">
+      <button onclick="intentarLogin()" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">Entrar</button>
+      <div id="loginError" style="color:var(--warn);font-size:12px;margin-top:6px;"></div>
+    </div>
+  </div>
 </div>
 
-<section id="main-costos" class="mainpanel" hidden>
+<header>
+  <div>
+    <h1>🥖 Producción Chepito</h1>
+    <div class="sub" id="headerSub">Cargando...</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="status" id="usuarioActual" style="cursor:pointer;text-decoration:underline;" onclick="cerrarSesion()" title="Clic para cambiar de usuario"></span>
+    <div class="status" id="connStatus">conectando...</div>
+  </div>
+</header>
 
-<div class="wrap">
-  <header class="top">
-    <div class="brand">
-      <h1>Costos <b>Chepito</b></h1>
-      <p>Costeo por producto · insumos → recetas → productos</p>
-    </div>
-    <div class="actions">
-      <span class="saved" id="saved">guardado ✓</span>
-      <button class="btn btn-sm btn-accent" id="btnReporte">Reporte CSV</button>
-      <button class="btn btn-sm" id="btnExport">Exportar</button>
-      <button class="btn btn-sm" id="btnImport">Importar</button>
-      <input type="file" id="fileImport" accept="application/json" hidden>
-    </div>
-  </header>
+<nav id="navTabs">
+  <button data-tab="chepito1" class="active">Chepito 1</button>
+  <button data-tab="chepito2">Chepito 2</button>
+  <button data-tab="consolidado">Consolidado</button>
+  <button data-tab="receta">Receta del día</button>
+  <button data-tab="productos">⚙️ Productos</button>
+  <button data-tab="historial">🗂️ Historial</button>
+  <button data-tab="usuarios">👥 Usuarios</button>
+</nav>
 
-  <div class="seedbar" id="seedbar" hidden>
-    <span>¿Primera vez? Cargá un ejemplo (harina → masa dulce → trenza) para ver cómo funciona.</span>
-    <button class="btn btn-sm" id="btnSeed">Cargar ejemplo</button>
+<main>
+  <div class="bar">
+    <label style="font-size:13px;color:var(--muted);">Fecha:</label>
+    <input type="date" id="fechaSel">
+    <input type="text" id="buscador" placeholder="Buscar producto...">
+    <button id="btnExportar" onclick="onExportarTXT()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">📄 Exportar TXT</button>
+    <button id="btnImprimir" onclick="onImprimir()" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ Imprimir</button>
+    <button id="btnRespaldo" onclick="descargarRespaldoCompleto()" title="Descarga toda la información de la app (producción, catálogo, historial) en un archivo JSON" style="display:none;background:#5a4a3a;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">💾 Respaldo JSON</button>
+    <span class="status" id="saveStatus"></span>
   </div>
 
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-insumos" aria-selected="true" data-tab="insumos">Insumos <span class="count" id="cInsumos">0</span></button>
-    <button class="tab" role="tab" id="tab-recetas" aria-selected="false" data-tab="recetas">Recetas <span class="count" id="cRecetas">0</span></button>
-    <button class="tab" role="tab" id="tab-productos" aria-selected="false" data-tab="productos">Productos <span class="count" id="cProductos">0</span></button>
+  <div id="configWarning" class="config-box" style="display:none;">
+    ⚠️ Falta conectar Supabase. Editá las constantes <code>SUPABASE_URL</code> y <code>SUPABASE_KEY</code> al inicio del archivo HTML con los datos de tu proyecto. Mientras tanto, los datos se guardan solo en este navegador (no se comparten entre compus).
   </div>
 
-  <!-- INSUMOS -->
-  <section class="panel active" id="panel-insumos" role="tabpanel" aria-labelledby="tab-insumos">
-    <div class="card">
-      <h2 id="insTitle">Nuevo insumo</h2>
-      <p class="sub">Materia prima como la comprás. La app calcula el costo por gramo / ml / unidad.</p>
-      <div class="grid">
-        <div class="field" style="grid-column:span 2">
-          <label>Nombre</label>
-          <input id="insNombre" placeholder="Harina, azúcar, queso…">
-        </div>
-        <div class="field">
-          <label>Costo de compra <span class="info" title="Lo que pagaste por el paquete/saco que comprás. Ej: ₡15.000 por el saco.">i</span></label>
-          <input id="insCosto" type="number" step="any" min="0" placeholder="₡">
-        </div>
-        <div class="field">
-          <label>Cantidad <span class="info" title="Cuánto trae ese paquete. Ej: 50 (kg).">i</span></label>
-          <input id="insCant" type="number" step="any" min="0" placeholder="50">
-        </div>
-        <div class="field">
-          <label>Unidad</label>
-          <select id="insUnidad">
-            <option value="kg">kg</option>
-            <option value="g">g</option>
-            <option value="L">L</option>
-            <option value="ml">ml</option>
-            <option value="unidad">unidad</option>
-          </select>
-        </div>
-      </div>
-      <div class="err" id="insErr"></div>
-      <div class="formrow">
-        <button class="btn btn-accent" id="insSave">Agregar insumo</button>
-        <button class="btn" id="insCancel" hidden>Cancelar</button>
-      </div>
-    </div>
-    <div id="insList"></div>
-  </section>
-
-  <!-- RECETAS -->
-  <section class="panel" id="panel-recetas" role="tabpanel" aria-labelledby="tab-recetas">
-    <div class="card">
-      <h2 id="recTitle">Nueva receta</h2>
-      <p class="sub">Masas y rellenos. Combiná insumos (y otras recetas) y decí cuánto rinde. Sirve para usarla dentro de los productos.</p>
-      <div class="grid">
-        <div class="field" style="grid-column:span 2">
-          <label>Nombre</label>
-          <input id="recNombre" placeholder="Masa dulce, relleno de queso…">
-        </div>
-        <div class="field">
-          <label>Tipo</label>
-          <select id="recTipo">
-            <option value="Masa">Masa</option>
-            <option value="Relleno">Relleno</option>
-            <option value="Otro">Otro</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Rinde <span class="info" title="Cuánto sale de esta receta en total. Ej: 4 kg de masa, o 20 porciones.">i</span></label>
-          <input id="recRendCant" type="number" step="any" min="0" placeholder="4">
-        </div>
-        <div class="field">
-          <label>Unidad rendimiento</label>
-          <select id="recRendUnidad">
-            <option value="kg">kg</option>
-            <option value="g">g</option>
-            <option value="L">L</option>
-            <option value="ml">ml</option>
-            <option value="unidad">unidad</option>
-            <option value="porción">porción</option>
-          </select>
-        </div>
-      </div>
-
-      <label style="font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin:16px 0 0">Ingredientes de la receta</label>
-      <div class="compbuild">
-        <div class="addrow">
-          <div class="field">
-            <label>Insumo o receta</label>
-            <select id="recCompSel"></select>
-          </div>
-          <div class="field">
-            <label>Cantidad</label>
-            <input id="recCompCant" type="number" step="any" min="0" placeholder="0">
-          </div>
-          <div class="field">
-            <label>Unidad</label>
-            <select id="recCompUnidad"></select>
-          </div>
-          <div class="addbtnwrap"><button class="btn btn-sm" id="recCompAdd">+ Agregar</button></div>
-        </div>
-        <div class="lines" id="recLines"></div>
-        <div class="subtotal">
-          <span class="lbl">Costo total de la receta</span>
-          <span class="val num" id="recTotal">—</span>
-        </div>
-        <div class="subtotal" style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">
-          <span class="lbl" id="recPorLbl">Costo por unidad</span>
-          <span class="val num" id="recPorUnidad" style="font-size:14px;font-weight:600">—</span>
-        </div>
-      </div>
-
-      <div class="err" id="recErr"></div>
-      <div class="formrow">
-        <button class="btn btn-accent" id="recSave">Guardar receta</button>
-        <button class="btn" id="recCancel" hidden>Cancelar</button>
-      </div>
-    </div>
-    <div id="recList"></div>
-  </section>
-
-  <!-- PRODUCTOS -->
-  <section class="panel" id="panel-productos" role="tabpanel" aria-labelledby="tab-productos">
-    <div class="card">
-      <h2 id="prodTitle">Nuevo producto</h2>
-      <p class="sub">Lo que vendés (las trenzas). Armalo con la masa, el relleno y lo que lleve encima. Poné el precio de venta y te dice el margen.</p>
-      <div class="grid">
-        <div class="field" style="grid-column:span 2">
-          <label>Nombre</label>
-          <input id="prodNombre" placeholder="Trenza dulce de queso…">
-        </div>
-        <div class="field">
-          <label>Precio de venta <span class="info" title="A cuánto la vendés (opcional). Si lo ponés, te calcula el margen.">i</span></label>
-          <input id="prodPrecio" type="number" step="any" min="0" placeholder="₡ (opcional)">
-        </div>
-      </div>
-
-      <label style="font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin:16px 0 0">Componentes del producto</label>
-      <div class="compbuild">
-        <div class="addrow">
-          <div class="field">
-            <label>Insumo o receta</label>
-            <select id="prodCompSel"></select>
-          </div>
-          <div class="field">
-            <label>Cantidad</label>
-            <input id="prodCompCant" type="number" step="any" min="0" placeholder="0">
-          </div>
-          <div class="field">
-            <label>Unidad</label>
-            <select id="prodCompUnidad"></select>
-          </div>
-          <div class="addbtnwrap"><button class="btn btn-sm" id="prodCompAdd">+ Agregar</button></div>
-        </div>
-        <div class="lines" id="prodLines"></div>
-        <div class="subtotal">
-          <span class="lbl">Costo del producto</span>
-          <span class="val num" id="prodTotal">—</span>
-        </div>
-      </div>
-
-      <div class="err" id="prodErr"></div>
-      <div class="formrow">
-        <button class="btn btn-accent" id="prodSave">Guardar producto</button>
-        <button class="btn" id="prodCancel" hidden>Cancelar</button>
-      </div>
-    </div>
-    <div class="field" style="margin:14px 0 2px">
-      <input id="prodBuscar" type="search" placeholder="🔍 Buscar producto por nombre…" autocomplete="off">
-    </div>
-    <div id="prodList"></div>
-  </section>
-</div>
-
-
-</section>
-<section id="main-produccion" class="mainpanel" hidden>
-  <div class="prodbar">
-    <span>🥖 <b>Producción Chepito</b> — la producción se ingresa acá; la vista <b>Gasto materia prima</b> la lee sola desde Supabase.</span>
-    <a class="btn btn-sm" href="produccion-chepito%20(1).html" target="_blank" rel="noopener">Abrir en ventana completa ↗</a>
-  </div>
-  <iframe id="prodFrame" data-src="produccion-chepito%20(1).html" title="Producción Chepito"></iframe>
-</section>
-
-<section id="main-gasto" class="mainpanel">
- <div class="wrap">
-  <header class="top">
-   <div class="brand">
-    <h1>Gasto en <b>materias primas</b></h1>
-    <p>Producción real (Supabase) × receta de cada producto (Costos)</p>
-   </div>
-   <div class="actions">
-    <button class="btn btn-sm" id="g_reload">↻ Actualizar</button>
-    <button class="btn btn-sm btn-accent" id="g_export" title="Descarga el gasto del período seleccionado (se abre en Excel)">⬇️ Excel</button>
-   </div>
-  </header>
-
-  <div class="gctrl">
-   <div class="seg" id="g_seg">
-    <button data-mode="dia" class="on">Día</button>
-    <button data-mode="semana">Semana</button>
-    <button data-mode="mes">Mes</button>
-   </div>
-   <button class="btn btn-sm" id="g_prev" title="Anterior">‹</button>
-   <span id="g_perlabel"></span>
-   <button class="btn btn-sm" id="g_next" title="Siguiente">›</button>
-   <input type="date" id="g_date" title="Elegí una fecha">
-  </div>
-
-  <div id="g_status" class="hint" style="margin-bottom:10px"></div>
-
-  <div class="card" id="g_monthCard">
-   <h2 id="g_monthTitle">Período</h2>
-   <div id="g_monthDetail"></div>
-  </div>
-
-  <details class="card" id="g_prodCard">
-   <summary>📦 Detalle por producto (qué producto gastó cada materia prima)</summary>
-   <div id="g_prodTable" style="margin-top:12px"></div>
-  </details>
-
-  <div class="card">
-   <h2 id="g_resTitle">Resumen</h2>
-   <p class="sub" id="g_resSub">Tocá una fila para ver su detalle arriba.</p>
-   <div id="g_yearTable"></div>
-  </div>
-
-  <details class="card" id="g_vincCard">
-   <summary>⚙️ Vínculos: producto de producción ↔ receta de Costos</summary>
-   <div id="g_vincTable" style="margin-top:12px"></div>
-  </details>
- </div>
-</section>
+  <div id="viewChepito1" class="view"></div>
+  <div id="viewChepito2" class="view" style="display:none;"></div>
+  <div id="viewConsolidado" class="view" style="display:none;"></div>
+  <div id="viewReceta" class="view" style="display:none;"></div>
+  <div id="viewProductos" class="view" style="display:none;"></div>
+  <div id="viewHistorial" class="view" style="display:none;"></div>
+  <div id="viewUsuarios" class="view" style="display:none;"></div>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+/* ====================== CONFIGURACIÓN SUPABASE ======================
+   1. Creá un proyecto gratis en https://supabase.com
+   2. En el SQL Editor, corré esto una vez:
 
-"use strict";
+   create table produccion (
+     fecha date not null,
+     sucursal text not null,
+     fila int not null,
+     cantidad numeric not null default 0,
+     updated_at timestamptz default now(),
+     primary key (fecha, sucursal, fila)
+   );
+   alter table produccion enable row level security;
+   create policy "acceso publico" on produccion for all using (true) with check (true);
 
-/* ---------- almacenamiento ---------- */
-const KEY = "chepito_costos_v1";
-let state = load() || { insumos: [], recetas: [], productos: [] };
-function load(){ try{ return JSON.parse(localStorage.getItem(KEY)); }catch(e){ return null; } }
-function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify(state)); flashSaved(); }
-  catch(e){ /* en la vista previa de Claude localStorage no persiste; al abrir/hostear el archivo sí */ }
-}
-let savedTO;
-function flashSaved(){ const s=document.getElementById("saved"); s.classList.add("on"); clearTimeout(savedTO); savedTO=setTimeout(()=>s.classList.remove("on"),1100); }
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+   create table catalogo_overrides (
+     fila int primary key,
+     nombre text,
+     codigo text,
+     familia text,
+     peso numeric,
+     activo boolean default true,
+     updated_at timestamptz default now()
+   );
+   alter table catalogo_overrides enable row level security;
+   create policy "acceso publico" on catalogo_overrides for all using (true) with check (true);
 
-/* ---------- unidades ---------- */
-const UNIDADES = {
-  g:       { familia:"peso",    factor:1 },
-  kg:      { familia:"peso",    factor:1000 },
-  ml:      { familia:"volumen", factor:1 },
-  L:       { familia:"volumen", factor:1000 },
-  unidad:  { familia:"conteo",  factor:1 },
-  "porción":{ familia:"conteo", factor:1 },
-};
-function unitsForFamilia(fam){
-  if(fam==="peso") return ["g","kg"];
-  if(fam==="volumen") return ["ml","L"];
-  return ["unidad","porción"];
-}
-const toBase = (cant, unidad) => (parseFloat(cant)||0) * (UNIDADES[unidad] ? UNIDADES[unidad].factor : 1);
+   create table codigos_sucursal (
+     fila int not null,
+     sucursal text not null,
+     codigo text,
+     updated_at timestamptz default now(),
+     primary key (fila, sucursal)
+   );
+   alter table codigos_sucursal enable row level security;
+   create policy "acceso publico" on codigos_sucursal for all using (true) with check (true);
 
-/* ---------- formato ---------- */
-const CRC = new Intl.NumberFormat("es-CR",{style:"currency",currency:"CRC",minimumFractionDigits:2,maximumFractionDigits:2});
-function money(n){ return isFinite(n) ? CRC.format(n) : "—"; }
-function moneyU(n){ // costo por unidad: más decimales
-  if(!isFinite(n)) return "—";
-  return "₡" + n.toLocaleString("es-CR",{minimumFractionDigits:2,maximumFractionDigits:4});
-}
-function pct(n){ return isFinite(n) ? n.toLocaleString("es-CR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%" : "—"; }
-function qtyTxt(c){ return (parseFloat(c.cantidad)||0).toLocaleString("es-CR",{maximumFractionDigits:3}) + " " + c.unidad; }
-const esc = s => (s||"").replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+   create table confirmaciones (
+     fecha date not null,
+     sucursal text not null,
+     confirmado boolean default false,
+     hora text,
+     primary key (fecha, sucursal)
+   );
+   alter table confirmaciones enable row level security;
+   create policy "acceso publico" on confirmaciones for all using (true) with check (true);
 
-/* ---------- búsqueda de items ---------- */
-const getInsumo = id => state.insumos.find(x=>x.id===id);
-const getReceta = id => state.recetas.find(x=>x.id===id);
-function itemRef(tipo,id){ return tipo==="insumo" ? getInsumo(id) : getReceta(id); }
-function itemNombre(c){ const it=itemRef(c.tipoRef,c.refId); return it ? it.nombre : "(borrado)"; }
-function itemFamilia(c){
-  const it=itemRef(c.tipoRef,c.refId); if(!it) return "conteo";
-  return c.tipoRef==="insumo" ? UNIDADES[it.unidad].familia : UNIDADES[it.rendUnidad].familia;
-}
+   create table historial_produccion (
+     fecha date primary key,
+     snapshot jsonb,
+     guardado_en text
+   );
+   alter table historial_produccion enable row level security;
+   create policy "acceso publico" on historial_produccion for all using (true) with check (true);
 
-/* ---------- costos (con guardia de referencia circular) ---------- */
-function costoBaseInsumo(ins){
-  const base = toBase(ins.cantCompra, ins.unidad);
-  return base>0 ? (parseFloat(ins.costo)||0)/base : Infinity;
-}
-function costoBaseItem(c, visiting){
-  const it = itemRef(c.tipoRef, c.refId);
-  if(!it) return 0;
-  if(c.tipoRef==="insumo") return costoBaseInsumo(it);
-  return costoBaseReceta(it, visiting); // ₡ por unidad base de su rendimiento
-}
-function costoLinea(c, visiting){
-  return toBase(c.cantidad, c.unidad) * costoBaseItem(c, visiting);
-}
-function costoReceta(rec, visiting){
-  visiting = visiting || new Set();
-  if(visiting.has(rec.id)) throw new Error("circular");
-  visiting.add(rec.id);
-  let t=0;
-  for(const c of rec.componentes) t += costoLinea(c, visiting);
-  visiting.delete(rec.id);
-  return t;
-}
-function costoBaseReceta(rec, visiting){
-  const base = toBase(rec.rendCant, rec.rendUnidad);
-  return base>0 ? costoReceta(rec, visiting)/base : Infinity;
-}
-function costoProducto(p){
-  let t=0;
-  for(const c of p.componentes) t += costoLinea(c, new Set());
-  return t;
-}
-function tryCost(fn){ try{ return {ok:true, val:fn()}; }catch(e){ return {ok:false, val:NaN}; } }
+   create table impresos (
+     fecha date primary key,
+     impreso boolean default false,
+     hora text
+   );
+   alter table impresos enable row level security;
+   create policy "acceso publico" on impresos for all using (true) with check (true);
 
-/* ---------- drafts (formularios) ---------- */
-let insEditId=null, recDraft=blankRec(), prodDraft=blankProd();
-function blankRec(){ return {id:null, nombre:"", tipo:"Masa", rendCant:"", rendUnidad:"kg", componentes:[]}; }
-function blankProd(){ return {id:null, nombre:"", precio:"", componentes:[]}; }
+   create table lotes_compartidos (
+     fila int primary key,
+     lote numeric default 0
+   );
+   alter table lotes_compartidos enable row level security;
+   create policy "acceso publico" on lotes_compartidos for all using (true) with check (true);
 
-/* ============ INSUMOS ============ */
-const $ = id => document.getElementById(id);
-function insReset(){
-  insEditId=null; $("insNombre").value=""; $("insCosto").value=""; $("insCant").value=""; $("insUnidad").value="kg";
-  $("insTitle").textContent="Nuevo insumo"; $("insSave").textContent="Agregar insumo"; $("insCancel").hidden=true; $("insErr").textContent="";
-}
-$("insSave").onclick = () => {
-  const nombre=$("insNombre").value.trim();
-  const costo=parseFloat($("insCosto").value), cant=parseFloat($("insCant").value), unidad=$("insUnidad").value;
-  if(!nombre){ $("insErr").textContent="Poné un nombre."; return; }
-  if(!(costo>0)){ $("insErr").textContent="El costo de compra debe ser mayor a 0."; return; }
-  if(!(cant>0)){ $("insErr").textContent="La cantidad debe ser mayor a 0."; return; }
-  if(insEditId){ Object.assign(getInsumo(insEditId), {nombre,costo,cantCompra:cant,unidad}); }
-  else { state.insumos.push({id:uid(),nombre,costo,cantCompra:cant,unidad}); }
-  save(); insReset(); renderAll();
-};
-$("insCancel").onclick = insReset;
-function insEdit(id){ const i=getInsumo(id); insEditId=id; $("insNombre").value=i.nombre; $("insCosto").value=i.costo;
-  $("insCant").value=i.cantCompra; $("insUnidad").value=i.unidad; $("insTitle").textContent="Editar insumo";
-  $("insSave").textContent="Guardar cambios"; $("insCancel").hidden=false; window.scrollTo({top:0,behavior:"smooth"}); }
-function insDelete(id){
-  const usado = usadoEn("insumo",id);
-  if(usado.length){ if(!confirm("Este insumo se usa en: "+usado.join(", ")+".\nSi lo borrás, esas recetas/productos quedan incompletos. ¿Borrar igual?")) return; }
-  else if(!confirm("¿Borrar este insumo?")) return;
-  state.insumos = state.insumos.filter(x=>x.id!==id); save(); renderAll();
-}
-function renderInsumos(){
-  const el=$("insList");
-  if(!state.insumos.length){ el.innerHTML = empty("No hay insumos todavía.","Agregá la harina y las materias primas que usás."); return; }
-  let h = `<div class="listhead">Insumos (${state.insumos.length})</div>`;
-  for(const i of state.insumos){
-    const cb = costoBaseInsumo(i);
-    const ub = unitsForFamilia(UNIDADES[i.unidad].familia)[0];
-    h += `<div class="irow">
-      <div class="nm">${esc(i.nombre)}<small>${esc(String(i.costo))!=="" ? money(i.costo)+" · "+(i.cantCompra)+" "+i.unidad : ""}</small></div>
-      <div class="price num">${moneyU(cb)}<small>por ${ub}</small></div>
-      <div class="ops"><button class="btn btn-sm" onclick="insEdit('${i.id}')">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="insDelete('${i.id}')">✕</button></div>
-    </div>`;
-  }
-  el.innerHTML=h;
-}
+   create table solicitudes_lote (
+     fecha date not null,
+     fila int not null,
+     de_sucursal text not null,
+     estado text default 'pendiente',
+     hora text,
+     hora_respuesta text,
+     primary key (fecha, fila)
+   );
+   alter table solicitudes_lote enable row level security;
+   create policy "acceso publico" on solicitudes_lote for all using (true) with check (true);
 
-/* ============ COMPONENTES (compartido) ============ */
-function fillItemSelect(sel, excludeRecetaId){
-  let h="";
-  if(state.insumos.length){
-    h += `<optgroup label="Insumos">` + state.insumos.map(i=>`<option value="insumo:${i.id}">${esc(i.nombre)}</option>`).join("") + `</optgroup>`;
-  }
-  const recs = state.recetas.filter(r=>r.id!==excludeRecetaId);
-  if(recs.length){
-    h += `<optgroup label="Recetas">` + recs.map(r=>`<option value="receta:${r.id}">${esc(r.nombre)} (${r.tipo})</option>`).join("") + `</optgroup>`;
-  }
-  if(!h) h = `<option value="">— agregá insumos primero —</option>`;
-  sel.innerHTML = h;
-}
-function refUnits(selVal){
-  if(!selVal) return ["unidad"];
-  const [tipo,id]=selVal.split(":");
-  const it=itemRef(tipo,id); if(!it) return ["unidad"];
-  const fam = tipo==="insumo" ? UNIDADES[it.unidad].familia : UNIDADES[it.rendUnidad].familia;
-  return unitsForFamilia(fam);
-}
-function syncCompUnits(selId, unitId){
-  const units = refUnits($(selId).value);
-  $(unitId).innerHTML = units.map(u=>`<option value="${u}">${u}</option>`).join("");
-}
-function addComp(draft, selId, cantId, unitId, errId){
-  const v=$(selId).value, cant=parseFloat($(cantId).value), unidad=$(unitId).value;
-  if(!v){ $(errId).textContent="Elegí un insumo o receta."; return; }
-  if(!(cant>0)){ $(errId).textContent="La cantidad debe ser mayor a 0."; return; }
-  const [tipoRef,refId]=v.split(":");
-  draft.componentes.push({tipoRef,refId,cantidad:cant,unidad});
-  $(cantId).value=""; $(errId).textContent="";
-}
-function renderLines(draft, linesId, visiting){
-  const el=$(linesId);
-  if(!draft.componentes.length){ el.innerHTML=`<div style="font-size:12.5px;color:var(--ink-soft);padding:8px 4px">Sin ingredientes todavía.</div>`; return; }
-  el.innerHTML = draft.componentes.map((c,idx)=>{
-    let lc; try{ lc = costoLinea(c, new Set(visiting||[])); }catch(e){ lc=NaN; }
-    return `<div class="lineitem">
-      <span>${esc(itemNombre(c))}</span>
-      <span class="qty num">${qtyTxt(c)}</span>
-      <span class="lc num">${money(lc)} <button class="xbtn" data-idx="${idx}" data-lines="${linesId}">✕</button></span>
-    </div>`;
-  }).join("");
-}
+   create table config (
+     clave text primary key,
+     valor jsonb,
+     updated_at timestamptz default now()
+   );
+   alter table config enable row level security;
+   create policy "acceso publico" on config for all using (true) with check (true);
 
-/* ============ RECETAS ============ */
-function recReset(){
-  recDraft=blankRec();
-  $("recNombre").value=""; $("recTipo").value="Masa"; $("recRendCant").value=""; $("recRendUnidad").value="kg";
-  $("recTitle").textContent="Nueva receta"; $("recSave").textContent="Guardar receta"; $("recCancel").hidden=true; $("recErr").textContent="";
-  refreshRecBuilder();
-}
-function refreshRecBuilder(){
-  fillItemSelect($("recCompSel"), recDraft.id);
-  syncCompUnits("recCompSel","recCompUnidad");
-  renderLines(recDraft,"recLines",[recDraft.id]);
-  // totales
-  let total, base;
-  try{ total = recDraft.componentes.reduce((s,c)=>s+costoLinea(c,new Set([recDraft.id])),0); }catch(e){ total=NaN; }
-  $("recTotal").textContent = money(total);
-  const ru=$("recRendUnidad").value; $("recPorLbl").textContent="Costo por "+ru;
-  const rc=parseFloat($("recRendCant").value);
-  $("recPorUnidad").textContent = (isFinite(total) && rc>0) ? money(total/rc) : "—";
-}
-$("recCompSel").onchange = () => syncCompUnits("recCompSel","recCompUnidad");
-$("recRendUnidad").onchange = refreshRecBuilder;
-$("recRendCant").oninput = refreshRecBuilder;
-$("recCompAdd").onclick = () => { addComp(recDraft,"recCompSel","recCompCant","recCompUnidad","recErr"); refreshRecBuilder(); };
-$("recSave").onclick = () => {
-  recDraft.nombre=$("recNombre").value.trim();
-  recDraft.tipo=$("recTipo").value;
-  recDraft.rendCant=parseFloat($("recRendCant").value);
-  recDraft.rendUnidad=$("recRendUnidad").value;
-  if(!recDraft.nombre){ $("recErr").textContent="Poné un nombre."; return; }
-  if(!(recDraft.rendCant>0)){ $("recErr").textContent="El rendimiento debe ser mayor a 0."; return; }
-  if(!recDraft.componentes.length){ $("recErr").textContent="Agregá al menos un ingrediente."; return; }
-  try{ costoReceta({...recDraft,id:recDraft.id||"__tmp__"}, new Set()); }
-  catch(e){ $("recErr").textContent="Hay una referencia circular (una receta se usa a sí misma)."; return; }
-  if(recDraft.id){ Object.assign(getReceta(recDraft.id), recDraft); }
-  else { recDraft.id=uid(); state.recetas.push({...recDraft}); }
-  save(); recReset(); renderAll();
-};
-$("recCancel").onclick = recReset;
-function recEdit(id){ const r=getReceta(id); recDraft=JSON.parse(JSON.stringify(r));
-  $("recNombre").value=r.nombre; $("recTipo").value=r.tipo; $("recRendCant").value=r.rendCant; $("recRendUnidad").value=r.rendUnidad;
-  $("recTitle").textContent="Editar receta"; $("recSave").textContent="Guardar cambios"; $("recCancel").hidden=false;
-  refreshRecBuilder(); window.scrollTo({top:0,behavior:"smooth"}); }
-function recDelete(id){
-  const usado=usadoEn("receta",id);
-  if(usado.length){ if(!confirm("Esta receta se usa en: "+usado.join(", ")+".\n¿Borrar igual?")) return; }
-  else if(!confirm("¿Borrar esta receta?")) return;
-  state.recetas=state.recetas.filter(x=>x.id!==id); save(); recReset(); renderAll();
-}
-function renderRecetas(){
-  const el=$("recList");
-  if(!state.recetas.length){ el.innerHTML=empty("No hay recetas todavía.","Creá tu masa base y tus rellenos para reusarlos en los productos."); return; }
-  let h=`<div class="listhead">Recetas (${state.recetas.length})</div>`;
-  for(const r of state.recetas){
-    const c=tryCost(()=>costoReceta(r,new Set()));
-    const base=toBase(r.rendCant,r.rendUnidad);
-    const porU = (c.ok && base>0) ? money(costoReceta(r,new Set())/r.rendCant) : "—";
-    h += `<div class="irow">
-      <div class="nm">${esc(r.nombre)} <small>${r.tipo} · rinde ${r.rendCant} ${r.rendUnidad} · ${r.componentes.length} ingrediente(s)</small></div>
-      <div class="price">${ c.ok ? `<span class="num">${money(c.val)}</span><small>${porU} / ${r.rendUnidad}</small>` : `<span class="warn-circ">⚠ circular</span>` }</div>
-      <div class="ops"><button class="btn btn-sm" onclick="recEdit('${r.id}')">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="recDelete('${r.id}')">✕</button></div>
-    </div>`;
-  }
-  el.innerHTML=h;
-}
+   -- Activa "tiempo real": para que los cambios se vean al instante en todas las
+   -- compus sin tener que refrescar la página.
+   alter publication supabase_realtime add table produccion;
+   alter publication supabase_realtime add table confirmaciones;
+   alter publication supabase_realtime add table impresos;
+   alter publication supabase_realtime add table historial_produccion;
+   alter publication supabase_realtime add table codigos_sucursal;
+   alter publication supabase_realtime add table catalogo_overrides;
+   alter publication supabase_realtime add table lotes_compartidos;
+   alter publication supabase_realtime add table solicitudes_lote;
 
-/* ============ PRODUCTOS ============ */
-function prodReset(){
-  prodDraft=blankProd();
-  $("prodNombre").value=""; $("prodPrecio").value="";
-  $("prodTitle").textContent="Nuevo producto"; $("prodSave").textContent="Guardar producto"; $("prodCancel").hidden=true; $("prodErr").textContent="";
-  refreshProdBuilder();
-}
-function refreshProdBuilder(){
-  fillItemSelect($("prodCompSel"), null);
-  syncCompUnits("prodCompSel","prodCompUnidad");
-  renderLines(prodDraft,"prodLines",[]);
-  let total; try{ total=prodDraft.componentes.reduce((s,c)=>s+costoLinea(c,new Set()),0); }catch(e){ total=NaN; }
-  $("prodTotal").textContent=money(total);
-}
-$("prodCompSel").onchange = () => syncCompUnits("prodCompSel","prodCompUnidad");
-$("prodCompAdd").onclick = () => { addComp(prodDraft,"prodCompSel","prodCompCant","prodCompUnidad","prodErr"); refreshProdBuilder(); };
-$("prodSave").onclick = () => {
-  prodDraft.nombre=$("prodNombre").value.trim();
-  const pr=$("prodPrecio").value.trim();
-  prodDraft.precio = pr==="" ? "" : parseFloat(pr);
-  if(!prodDraft.nombre){ $("prodErr").textContent="Poné un nombre."; return; }
-  if(!prodDraft.componentes.length){ $("prodErr").textContent="Agregá al menos un componente."; return; }
-  if(prodDraft.id){ Object.assign(state.productos.find(x=>x.id===prodDraft.id), prodDraft); }
-  else { prodDraft.id=uid(); state.productos.push({...prodDraft}); }
-  save(); prodReset(); renderAll();
-};
-$("prodCancel").onclick = prodReset;
-$("prodBuscar").oninput = renderProductos;
-function prodEdit(id){ const p=state.productos.find(x=>x.id===id); prodDraft=JSON.parse(JSON.stringify(p));
-  $("prodNombre").value=p.nombre; $("prodPrecio").value=(p.precio===""||p.precio==null)?"":p.precio;
-  $("prodTitle").textContent="Editar producto"; $("prodSave").textContent="Guardar cambios"; $("prodCancel").hidden=false;
-  refreshProdBuilder(); window.scrollTo({top:0,behavior:"smooth"}); }
-function prodDelete(id){ if(!confirm("¿Borrar este producto?")) return;
-  state.productos=state.productos.filter(x=>x.id!==id); save(); renderAll(); }
-const normBusca = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
-function renderProductos(){
-  const el=$("prodList");
-  if(!state.productos.length){ el.innerHTML=empty("No hay productos todavía.","Armá tu primera trenza con la masa y el relleno, y poné el precio para ver el margen."); return; }
-  const qRaw=($("prodBuscar")?$("prodBuscar").value:"").trim(), q=normBusca(qRaw);
-  const lista = q ? state.productos.filter(p=>normBusca(p.nombre).includes(q)) : state.productos;
-  if(!lista.length){ el.innerHTML=empty("Nada que calce con «"+esc(qRaw)+"».","Probá con otro nombre o borrá la búsqueda."); return; }
-  let h=`<div class="listhead">Productos (${q ? lista.length+" de "+state.productos.length : state.productos.length})</div>`;
-  for(const p of lista){
-    const costo=costoProducto(p);
-    const tieneP = p.precio!=="" && p.precio!=null && isFinite(p.precio);
-    let badge="", margRows="";
-    if(tieneP){
-      const m=p.precio-costo, mp = p.precio>0 ? (m/p.precio*100) : NaN;
-      const cls = m<0 ? "bad" : "good";
-      badge = `<span class="badge ${cls}">${m<0?"Pierde ":"Margen "}${pct(mp)}</span>`;
-      margRows = `<div class="totrow muted"><span class="k">Precio de venta</span><span class="v num">${money(p.precio)}</span></div>
-        <div class="totrow"><span class="k">Margen</span><span class="v num" style="color:${m<0?'var(--bad)':'var(--good)'}">${money(m)}</span></div>`;
-    } else {
-      badge = `<span class="badge neu">sin precio</span>`;
-    }
-    const lines = p.componentes.map(c=>{
-      let lc; try{ lc=costoLinea(c,new Set()); }catch(e){ lc=NaN; }
-      return `<div class="row"><span>${esc(itemNombre(c))}</span><span class="q num">${qtyTxt(c)}</span><span class="v num">${money(lc)}</span></div>`;
-    }).join("");
-    h += `<div class="ficha">
-      <div class="fh">
-        <div class="ttl">${esc(p.nombre)}
-          <div class="ops"><button class="btn btn-sm" onclick="prodEdit('${p.id}')">Editar</button>
-            <button class="btn btn-sm btn-danger" onclick="prodDelete('${p.id}')">✕</button></div>
-        </div>
-        <div class="cost"><div class="c num">${money(costo)}</div><div class="l">costo de producir</div>${badge}</div>
-      </div>
-      <div class="fl">
-        ${lines}
-        <div class="totrow"><span class="k">Costo total</span><span class="v num">${money(costo)}</span></div>
-        ${margRows}
-      </div>
-    </div>`;
-  }
-  el.innerHTML=h;
-}
-
-/* ---------- helpers ---------- */
-function usadoEn(tipoRef, refId){
-  const out=[];
-  for(const r of state.recetas) if(r.componentes.some(c=>c.tipoRef===tipoRef&&c.refId===refId)) out.push(r.nombre);
-  for(const p of state.productos) if(p.componentes.some(c=>c.tipoRef===tipoRef&&c.refId===refId)) out.push(p.nombre);
-  return out;
-}
-function empty(t,s){ return `<div class="empty"><p><strong>${t}</strong><br>${s}</p></div>`; }
-
-/* eliminar línea (delegación) */
-document.addEventListener("click", e=>{
-  const b=e.target.closest(".xbtn"); if(!b) return;
-  const idx=+b.dataset.idx, which=b.dataset.lines;
-  if(which==="recLines"){ recDraft.componentes.splice(idx,1); refreshRecBuilder(); }
-  else if(which==="prodLines"){ prodDraft.componentes.splice(idx,1); refreshProdBuilder(); }
-});
-
-/* ---------- tabs ---------- */
-document.querySelectorAll(".tab").forEach(t=>{
-  t.onclick = () => {
-    document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected","false"));
-    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
-    t.setAttribute("aria-selected","true");
-    $("panel-"+t.dataset.tab).classList.add("active");
-  };
-});
-
-/* ---------- reporte CSV ---------- */
-$("btnReporte").onclick = () => {
-  const rows = [["Producto","Costo (₡)","Precio Venta (₡)","Margen (₡)","Margen (%)","Componentes"]];
-  for(const p of state.productos){
-    const costo = costoProducto(p);
-    const tieneP = p.precio!=="" && p.precio!=null && isFinite(p.precio);
-    const precio = tieneP ? p.precio : "";
-    const margenAbs = tieneP ? (p.precio - costo) : "";
-    const margenPct = tieneP && p.precio>0 ? ((p.precio-costo)/p.precio*100).toFixed(1)+"%" : "";
-    const comps = p.componentes.map(c=>{
-      let lc; try{ lc=costoLinea(c,new Set()); }catch(e){ lc=NaN; }
-      return itemNombre(c)+" "+qtyTxt(c)+" =₡"+lc.toFixed(2);
-    }).join(" | ");
-    rows.push([
-      p.nombre,
-      costo.toFixed(2),
-      precio !== "" ? parseFloat(precio).toFixed(2) : "",
-      margenAbs !== "" ? margenAbs.toFixed(2) : "",
-      margenPct,
-      comps
-    ]);
-  }
-  const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
-  const bom = "﻿"; // BOM para que Excel abra bien con acentos
-  const blob = new Blob([bom+csv], {type:"text/csv;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "costos-productos-"+new Date().toISOString().slice(0,10)+".csv";
-  a.click(); URL.revokeObjectURL(a.href);
-};
-
-/* ---------- export / import ---------- */
-$("btnExport").onclick = () => {
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="costos-chepito-"+new Date().toISOString().slice(0,10)+".json";
-  a.click(); URL.revokeObjectURL(a.href);
-};
-$("btnImport").onclick = () => $("fileImport").click();
-$("fileImport").onchange = e => {
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload = () => {
-    try{
-      const d=JSON.parse(r.result);
-      if(!d || !Array.isArray(d.insumos) || !Array.isArray(d.recetas) || !Array.isArray(d.productos)) throw 0;
-      if(!confirm("Esto reemplaza los datos actuales por los del archivo. ¿Seguir?")) return;
-      state=d; save(); insReset(); recReset(); prodReset(); renderAll();
-    }catch(err){ alert("El archivo no es un respaldo válido de Costos Chepito."); }
-    finally{ e.target.value=""; }
-  };
-  r.readAsText(f);
-};
-
-/* ---------- ejemplo ---------- */
-$("btnSeed").onclick = () => {
-  const harina={id:uid(),nombre:"Harina",costo:15000,cantCompra:50,unidad:"kg"};
-  const azucar={id:uid(),nombre:"Azúcar",costo:9000,cantCompra:25,unidad:"kg"};
-  const queso ={id:uid(),nombre:"Queso",costo:4500,cantCompra:1,unidad:"kg"};
-  state.insumos.push(harina,azucar,queso);
-  const masa={id:uid(),nombre:"Masa dulce",tipo:"Masa",rendCant:4,rendUnidad:"kg",componentes:[
-    {tipoRef:"insumo",refId:harina.id,cantidad:3,unidad:"kg"},
-    {tipoRef:"insumo",refId:azucar.id,cantidad:0.5,unidad:"kg"},
-  ]};
-  const relleno={id:uid(),nombre:"Relleno de queso",tipo:"Relleno",rendCant:1,rendUnidad:"kg",componentes:[
-    {tipoRef:"insumo",refId:queso.id,cantidad:1,unidad:"kg"},
-  ]};
-  state.recetas.push(masa,relleno);
-  state.productos.push({id:uid(),nombre:"Trenza dulce de queso",precio:1200,componentes:[
-    {tipoRef:"receta",refId:masa.id,cantidad:120,unidad:"g"},
-    {tipoRef:"receta",refId:relleno.id,cantidad:60,unidad:"g"},
-  ]});
-  save(); renderAll();
-};
-
-/* ---------- render maestro ---------- */
-function renderAll(){
-  $("cInsumos").textContent=state.insumos.length;
-  $("cRecetas").textContent=state.recetas.length;
-  $("cProductos").textContent=state.productos.length;
-  $("seedbar").hidden = !!(state.insumos.length||state.recetas.length||state.productos.length);
-  renderInsumos(); renderRecetas(); renderProductos();
-  refreshRecBuilder(); refreshProdBuilder();
-}
-renderAll();
-
-</script>
-<script>
-/* ================================================================
-   HUB CHEPITO — navegación entre las 3 pestañas + Gasto por período.
-   Gasto = producción real (Supabase) × receta de cada producto
-   (definida en Costos) → materia prima consumida por día / semana / mes.
-   Reutiliza del módulo de Costos (corre antes que este script):
-     state, getInsumo, getReceta, toBase, costoBaseInsumo, UNIDADES
-   ================================================================ */
-(function(){
-"use strict";
-
-/* ---------------- utilidades ---------------- */
-const $  = id => document.getElementById(id);
-const escH = s => (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-const CRC0 = new Intl.NumberFormat("es-CR",{style:"currency",currency:"CRC",maximumFractionDigits:0});
-const money0 = n => isFinite(n) ? CRC0.format(n) : "—";
-const nfmt = (n,d=2) => isFinite(n) ? Number(n).toLocaleString("es-CR",{maximumFractionDigits:d}) : "—";
-const ACC={'á':'a','é':'e','í':'i','ó':'o','ú':'u','ü':'u','ñ':'n'};
-const norm  = s => (s==null?'':String(s)).toLowerCase().replace(/[áéíóúüñ]/g,c=>ACC[c]||c).trim();
-const normp = s => norm(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-const singular = s => normp(s).split(' ').map(w=> w.length>3 ? w.replace(/e?s$/,'') : w).join(' ');
-const stripDia = s => (s==null?'':String(s)).replace(/\s+(sabado|s[áa]bado|domingo)$/i,'');
-const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const artTipo = t => (t==='semana'?'esta ':'este ')+t;   // "este día" / "esta semana" / "este mes"
-
-/* ---------------- fechas (hora local, sin corrimiento UTC) ---------------- */
-function parseISO(s){ return new Date(s+'T12:00:00'); }
-function isoOf(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function todayISO(){ return isoOf(new Date()); }
-function addDays(iso,n){ const d=parseISO(iso); d.setDate(d.getDate()+n); return isoOf(d); }
-function mondayOf(iso){ const d=parseISO(iso); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); return isoOf(d); }
-function finDeMes(y,mi){ return isoOf(new Date(y,mi+1,0)); }
-function fmtDM(iso){ return parseISO(iso).toLocaleDateString('es-CR',{day:'numeric',month:'short'}); }
-function fmtDiaLargo(iso){ return parseISO(iso).toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
-function fmtDiaCorto(iso){ return parseISO(iso).toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'}); }
-
-/* ---------------- navegación entre pestañas ---------------- */
-let prodLoaded=false, gastoInit=false;
-function showMain(key){
-  if(key!=='produccion' && !esRolAdmin(rolLogueado())) key='produccion';  // Gasto y Costos: solo Admin
-  document.querySelectorAll('.mainpanel').forEach(p=>{ p.hidden = (p.id !== 'main-'+key); });
-  document.querySelectorAll('.mainnav button').forEach(b=>b.classList.toggle('active', b.dataset.main===key));
-  if(key==='produccion' && !prodLoaded){
-    const fr=$('prodFrame');
-    if(fr && fr.dataset.src){ fr.src=fr.dataset.src; prodLoaded=true; }
-  }
-  if(key==='gasto'){
-    if(!gastoInit){ gastoInit=true; ensureData(); }
-    else { render(); }   // al volver, refresca por si cambiaron recetas/precios en Costos
-  }
-}
-const navEl = document.querySelector('.mainnav');
-if(navEl) navEl.addEventListener('click', e=>{
-  const b=e.target.closest('button[data-main]'); if(!b) return; showMain(b.dataset.main);
-});
-
-/* ---------------- acceso: Gasto y Costos solo para el usuario Admin ----------------
-   Usa el MISMO login de la app de Producción (iframe): el rol queda en
-   localStorage['chepito_rol'] y los usuarios/permisos en 'chepito_usuarios_config'.
-   Es admin quien tenga el permiso 'usuarios' (igual que esAdmin() en Producción). */
-function _lsGet(key){
-  let v=null;
-  try{ v=localStorage.getItem(key); }catch(e){}
-  if(v==null){ try{ const fr=$('prodFrame'); if(fr && fr.contentWindow) v=fr.contentWindow.localStorage.getItem(key); }catch(e){} }
-  return v;
-}
-function rolLogueado(){ return _lsGet('chepito_rol'); }
-function esRolAdmin(rol){
-  if(!rol) return false;
-  let cfg=null; try{ cfg=JSON.parse(_lsGet('chepito_usuarios_config')); }catch(e){}
-  if(Array.isArray(cfg)){
-    const u=cfg.find(x=>x && x.id===rol);
-    if(u) return (u.permisos||[]).includes('usuarios');
-  }
-  return rol==='admin';
-}
-let _adminPrev=null;
-function aplicarAcceso(){
-  const admin=esRolAdmin(rolLogueado());
-  if(admin!==_adminPrev){
-    _adminPrev=admin;
-    document.querySelectorAll('.mainnav button[data-main="gasto"], .mainnav button[data-main="costos"]')
-      .forEach(b=>{ b.style.display = admin ? '' : 'none'; });
-  }
-  if(!admin){
-    const visible=[...document.querySelectorAll('.mainpanel')].find(p=>!p.hidden);
-    if(!visible || visible.id!=='main-produccion') showMain('produccion');
-  }
-}
-window.addEventListener('storage', aplicarAcceso);   // login/logout hecho dentro del iframe
-setInterval(aplicarAcceso, 2000);                    // respaldo por si el evento no llega
-
-/* ---------------- Supabase (mismo proyecto que Producción) ---------------- */
+   3. En Settings > API, copiá tu "Project URL" y tu "anon public key"
+      y pegalos abajo.
+======================================================================= */
 const SUPABASE_URL = "https://fqwxhrxjphvqjtosxizb.supabase.co";
 const SUPABASE_KEY = "sb_publishable_FY_EOBRsE77frSsPFSsexA_ZWGc5AQF";
-let supa=null, useSupa=false;
-try{
-  if(window.supabase && SUPABASE_URL.indexOf("http")===0 && SUPABASE_KEY.length>10){
-    supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    useSupa = true;
-  }
-}catch(e){ console.error(e); }
 
-/* ---------------- catálogo de Producción (para fila -> nombre) ---------------- */
-const BASE_CATALOG = [
+let supa = null;
+let useSupabase = false;
+try {
+  if (SUPABASE_URL.startsWith("http") && SUPABASE_KEY.length > 10) {
+    supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    useSupabase = true;
+  }
+} catch(e) { console.error(e); }
+
+/* ====================== USUARIOS Y PERMISOS ====================== */
+const DEFAULT_USUARIOS = [
+  {id:'chepito1', label:'🏠 Chepito 1', clave:'chepito1',    permisos:['chepito1','consolidado','receta']},
+  {id:'chepito2', label:'🏠 Chepito 2', clave:'chepito2',    permisos:['chepito2','consolidado','receta']},
+  {id:'admin',    label:'🔑 Admin',     clave:'chepitoadmin', permisos:['chepito1','chepito2','consolidado','receta','productos','historial','usuarios']}
+];
+let usuariosConfig = null;
+function getUsuariosLista(){ return usuariosConfig || DEFAULT_USUARIOS.map(u=>({...u, permisos:[...u.permisos]})); }
+function getUsuario(id){ return getUsuariosLista().find(u=>u.id===id); }
+function getClaveRol(id){ return (getUsuario(id)||{}).clave||''; }
+function getLabelRol(id){ return (getUsuario(id)||{}).label||id; }
+function getPermisosRol(id){ return (getUsuario(id)||{}).permisos||[]; }
+function esAdmin(){ return getPermisosRol(rolActual).includes('usuarios'); }
+function loadUsuariosLocal(){
+  try{ const r=localStorage.getItem('chepito_usuarios_config'); if(r) usuariosConfig=JSON.parse(r); }catch(e){}
+}
+function saveUsuariosLocal(){
+  try{ localStorage.setItem('chepito_usuarios_config', JSON.stringify(getUsuariosLista())); }catch(e){}
+}
+async function loadUsuariosSupabase(){
+  if(!useSupabase) return;
+  const {data,error} = await supa.from('config').select('valor').eq('clave','usuarios_config').maybeSingle();
+  if(error && error.code!=='PGRST116'){ console.error(error); return; }
+  if(data && data.valor) usuariosConfig = data.valor;
+}
+async function saveUsuariosSupabase(){
+  if(!useSupabase) return;
+  const {error} = await supa.from('config').upsert({clave:'usuarios_config', valor:getUsuariosLista()},{onConflict:'clave'});
+  if(error) console.error(error);
+}
+function renderLoginBotones(){
+  const cont = document.getElementById('loginBotones');
+  if(!cont) return;
+  cont.innerHTML = getUsuariosLista().map(u=>
+    `<button onclick="mostrarClave('${u.id}')" style="padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:left;">${u.label}</button>`
+  ).join('');
+}
+// PERMISOS_ROL se mantiene por compatibilidad pero no se usa directamente
+const PERMISOS_ROL = {};
+// Productos del Excel (los 12 "base" de baguette, entre semana) cuya CANTIDAD
+// solo puede cambiar Admin — Chepito 1 y Chepito 2 los ven pero no los pueden tocar.
+// Productos del Excel de baguette (los 12 productos base × normal/sábado/domingo = 36)
+// cuya CANTIDAD solo puede cambiar Admin — Chepito 1 y Chepito 2 los ven pero no los pueden tocar.
+const PRODUCTOS_CANTIDAD_BLOQUEADA = [];
+for(let f=504; f<=539; f++) PRODUCTOS_CANTIDAD_BLOQUEADA.push(f);
+let rolActual = null;
+let rolPendiente = null;
+
+/* ====================== LOTES COMPARTIDOS (moldes que se reparten entre Chepito 1 y 2) ======================
+   Productos que salen de un molde de tamaño fijo (ej: tajada de queque = molde de 12).
+   Si ambas sucursales quieren, tienen que coordinarse para que sumado dé el tamaño del molde
+   (o un múltiplo), si no se desperdicia el molde. Admin puede cambiar el tamaño de cada molde
+   desde la pestaña Productos.
+   lotesCompartidos[fila] = tamaño del molde (0 o ausente = no es producto de molde compartido)
+===================================================================================================== */
+let lotesCompartidos = {
+  72: 12,  // Tajada de queque vainilla
+  70: 6,   // Muffin
+  105: 8,  // Queque crema pastelera
+  104: 8,  // Queque yogurt
+  80: 8,   // Gato blanco
+  63: 12,  // Torta chilena
+  95: 8,   // Integral de manzana
+  96: 8,   // Tamal asado
+  97: 8,   // Tamal maicena
+  98: 8,   // Tamal zanahoria piña
+  71: 8,   // Brownie
+  108: 8,  // Borracho
+  79: 9,   // Gato empacado rojo
+  73: 8,   // Volcado de piña
+  146: 8,  // Cuña chocolate
+  64: 8    // Arrollado queque
+};
+function loadLotesLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_lotes');
+    if(raw) lotesCompartidos = {...lotesCompartidos, ...JSON.parse(raw)};
+  }catch(e){}
+}
+function saveLotesLocal(){
+  try{ localStorage.setItem('chepito_lotes', JSON.stringify(lotesCompartidos)); }catch(e){}
+}
+async function loadLotesSupabase(){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('lotes_compartidos').select('*');
+  if(error){ console.error(error); return; }
+  (data||[]).forEach(r=>{ lotesCompartidos[r.fila] = r.lote; });
+}
+async function cambiarLote(fila, lote){
+  lotesCompartidos[fila] = Number(lote)||0;
+  saveLotesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('lotes_compartidos').upsert({fila, lote:Number(lote)||0}, {onConflict:'fila'});
+    if(error) console.error(error);
+  }
+  renderAll();
+}
+
+/* ====================== SOLICITUDES DE MOLDE COMPARTIDO ======================
+   Cuando una sucursal pone una cantidad que no completa el molde (ej: 4 de un molde
+   de 8), se le manda una SOLICITUD a la otra sucursal para que ponga lo que falta.
+   La otra la puede ACEPTAR (se le suma lo que falta automáticamente) o RECHAZAR.
+   Mientras haya una solicitud sin contestar, NINGUNA de las dos puede confirmar el día.
+   solicitudesLote[fecha][fila] = {de, estado:'pendiente'|'rechazada', hora, horaRespuesta}
+============================================================================== */
+let solicitudesLote = {};
+function getSolicitudes(fecha){ return solicitudesLote[fecha] || {}; }
+function loadSolicitudesLocal(){
+  try{ const r=localStorage.getItem('chepito_solicitudes_lote'); if(r) solicitudesLote=JSON.parse(r); }catch(e){}
+}
+function saveSolicitudesLocal(){
+  try{ localStorage.setItem('chepito_solicitudes_lote', JSON.stringify(solicitudesLote)); }catch(e){}
+}
+async function loadSolicitudesSupabase(fecha){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('solicitudes_lote').select('*').eq('fecha', fecha);
+  if(error){ console.error(error); return; }
+  solicitudesLote[fecha] = {};
+  (data||[]).forEach(r=>{ solicitudesLote[fecha][r.fila] = {de:r.de_sucursal, estado:r.estado, hora:r.hora, horaRespuesta:r.hora_respuesta}; });
+  saveSolicitudesLocal();
+}
+async function upsertSolicitud(fecha, fila, s){
+  if(!solicitudesLote[fecha]) solicitudesLote[fecha] = {};
+  solicitudesLote[fecha][fila] = s;
+  saveSolicitudesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('solicitudes_lote').upsert(
+      {fecha, fila, de_sucursal:s.de, estado:s.estado, hora:s.hora, hora_respuesta:s.horaRespuesta||null}, {onConflict:'fecha,fila'});
+    if(error) console.error(error);
+  }
+}
+async function borrarSolicitud(fecha, fila){
+  if(solicitudesLote[fecha]) delete solicitudesLote[fecha][fila];
+  saveSolicitudesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('solicitudes_lote').delete().eq('fecha', fecha).eq('fila', fila);
+    if(error) console.error(error);
+  }
+}
+function nombreProducto(fila){
+  return cap((allCatalogRows().find(c=>c.fila===fila)||{}).nombre || ('producto #'+fila));
+}
+// Mantiene la solicitud al día después de cada cambio de cantidad.
+// Devuelve true si se creó (o reactivó) una solicitud nueva de parte de `sucursal`.
+async function sincronizarSolicitudLote(fecha, fila, sucursal){
+  const lote = lotesCompartidos[fila] || 0;
+  if(!lote) return false;
+  const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+  const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+  const total = v1+v2;
+  const sol = getSolicitudes(fecha)[fila];
+  if(total<=0 || total % lote === 0){
+    if(sol) await borrarSolicitud(fecha, fila); // cuadró: la solicitud queda resuelta
+    return false;
+  }
+  if(!sol || sol.estado==='rechazada'){
+    const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+    await upsertSolicitud(fecha, fila, {de:sucursal, estado:'pendiente', hora});
+    return true;
+  }
+  return false; // ya hay una pendiente: se deja igual (los montos se calculan en vivo)
+}
+// Solicitudes sin contestar de un día — bloquean la confirmación de las DOS sucursales
+function solicitudesPendientes(fecha){
+  const out = [];
+  const sols = getSolicitudes(fecha);
+  Object.keys(sols).forEach(filaStr=>{
+    const sol = sols[filaStr];
+    if(sol.estado!=='pendiente') return;
+    const fila = Number(filaStr);
+    const lote = lotesCompartidos[fila] || 0;
+    const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+    const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+    const total = v1+v2;
+    if(!lote || total<=0 || total % lote === 0) return; // ya quedó resuelta
+    const de = sol.de==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+    out.push(`${nombreProducto(fila)}: solicitud de ${de} sin contestar`);
+  });
+  return out;
+}
+async function aceptarSolicitud(fila, sucursal){
+  const lote = lotesCompartidos[fila] || 0;
+  const sol = getSolicitudes(fechaActual)[fila];
+  if(!sol || !lote) return;
+  const v1 = getDatos(fechaActual,'chepito1')[fila] || 0;
+  const v2 = getDatos(fechaActual,'chepito2')[fila] || 0;
+  const total = v1+v2;
+  if(total<=0 || total % lote === 0){ await borrarSolicitud(fechaActual, fila); renderAll(); return; }
+  const falta = Math.ceil(total/lote)*lote - total;
+  const mia = getDatos(fechaActual, sucursal)[fila] || 0;
+  if(!confirm(`¿Aceptás poner ${falta} más de "${nombreProducto(fila)}" para completar el molde de ${lote}?\n\nTu cantidad quedaría en ${mia+falta}.`)) return;
+  await guardarCelda(fechaActual, sucursal, fila, mia+falta, null); // al cuadrar, la solicitud se borra sola
+}
+async function rechazarSolicitud(fila, sucursal){
+  const sol = getSolicitudes(fechaActual)[fila];
+  if(!sol) return;
+  const deEtiqueta = sol.de==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  if(!confirm(`¿Rechazar la solicitud de ${deEtiqueta} por "${nombreProducto(fila)}"?\n\n${deEtiqueta} va a ver que la rechazaste y tendrá que ajustar su cantidad. Mientras no cuadre, el producto no sale en la programación.`)) return;
+  const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  await upsertSolicitud(fechaActual, fila, {...sol, estado:'rechazada', horaRespuesta:hora});
+  renderAll();
+}
+async function descartarSolicitud(fila){
+  await borrarSolicitud(fechaActual, fila);
+  renderAll();
+}
+
+function mostrarClave(rol){
+  rolPendiente = rol;
+  document.getElementById('cajaClave').style.display = 'block';
+  document.getElementById('loginError').textContent = '';
+  const input = document.getElementById('claveInput');
+  input.value = '';
+  input.focus();
+}
+function intentarLogin(){
+  const clave = document.getElementById('claveInput').value;
+  if(clave === getClaveRol(rolPendiente)){
+    rolActual = rolPendiente;
+    localStorage.setItem('chepito_rol', rolActual);
+    document.getElementById('loginOverlay').style.display = 'none';
+    aplicarPermisosRol();
+  } else {
+    document.getElementById('loginError').textContent = 'Clave incorrecta.';
+  }
+}
+function cerrarSesion(){
+  if(!confirm('¿Cambiar de usuario?')) return;
+  rolActual = null;
+  localStorage.removeItem('chepito_rol');
+  renderLoginBotones();
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('cajaClave').style.display = 'none';
+}
+function etiquetaRol(rol){ return getLabelRol(rol); }
+function aplicarPermisosRol(){
+  const permitidas = getPermisosRol(rolActual);
+  document.querySelectorAll('#navTabs button[data-tab]').forEach(btn=>{
+    btn.style.display = permitidas.includes(btn.dataset.tab) ? '' : 'none';
+  });
+  document.getElementById('usuarioActual').textContent = etiquetaRol(rolActual) + ' (cambiar)';
+  document.getElementById('btnRespaldo').style.display = esAdmin() ? 'inline-block' : 'none';
+  if(!permitidas.includes(tabActiva)){
+    tabActiva = permitidas[0];
+    document.querySelectorAll('#navTabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabActiva));
+    ['chepito1','chepito2','consolidado','receta','productos','historial','usuarios'].forEach(t=>{
+      document.getElementById('view'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = (t===tabActiva)?'block':'none';
+    });
+  }
+  renderAll();
+}
+
+/* ====================== CATÁLOGO (extraído del Excel original) ====================== */
+// [fila_consolidado, codigo, nombre, familia, peso_unitario_g]
+const BASE_CATALOG=[
 [9,'00001','Arrollado Coco','dulce',290],
 [10,'00001','Arrollado de canela','dulce',85],
 [11,'00002','Arrollado dulce','dulce',290],
@@ -1172,482 +720,1690 @@ const BASE_CATALOG = [
 [542,'00135','la nacion domingo','baguette',0],
 [543,'00137','la teja domingo','baguette',0]
 ];
-let overrides = {};
-function allCatalogRows(){
-  const map={};
-  BASE_CATALOG.forEach(c=>{ map[c[0]]={fila:c[0],codigo:c[1],nombre:c[2],familia:c[3]||'',peso:c[4],activo:true}; });
-  Object.keys(overrides).forEach(fs=>{
-    const fila=Number(fs), ov=overrides[fs];
-    if(map[fila]) map[fila]={...map[fila],...ov,fila};
-    else map[fila]={fila,codigo:ov.codigo||'',nombre:ov.nombre||'',familia:ov.familia||'',peso:ov.peso||0,activo:ov.activo!==false};
-  });
-  return Object.values(map);
+/* ====================== ESTADO ====================== */
+// datos[fecha][sucursal][fila] = cantidad
+let datos = { };
+
+// Fecha en formato YYYY-MM-DD usando hora LOCAL (evita el corrimiento de día por UTC)
+function fechaISO(date){
+  const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
 }
-function effectiveCatalog(){ return allCatalogRows().filter(c=>c.activo!==false); }
-let _nf=null;
-function nombrePorFila(){ if(_nf) return _nf; _nf={}; effectiveCatalog().forEach(c=>{ _nf[c.fila]=c.nombre; }); return _nf; }
-/* Variante por fila: en la familia «baguette» (Baguette / Mañana-Tarde) los
-   renglones base y los «… sabado» / «… domingo» traen cantidades TODOS los días
-   en la hoja de Producción, pero solo se hornean su día: lunes a viernes cuenta
-   la fila base, el sábado solo las «sabado» y el domingo solo las «domingo».
-   Para las demás familias, la regla aplica solo si existe el renglón hermano
-   con sufijo (p. ej. si alguien crea «X sabado» fuera de la familia baguette). */
-let _vi=null;
-function variantPorFila(){
-  if(_vi) return _vi;
-  const rows=effectiveCatalog();
-  const nombres=new Set(rows.map(c=>normp(c.nombre)));
-  _vi={};
-  rows.forEach(c=>{
-    const n=normp(c.nombre);
-    const esBag = norm(c.familia)==='baguette';
-    if(n.endsWith(' sabado'))       _vi[c.fila]={tipo:'sab'};
-    else if(n.endsWith(' domingo')) _vi[c.fila]={tipo:'dom'};
-    else _vi[c.fila]={tipo:'base',
-      hasSab: esBag || nombres.has(n+' sabado'),
-      hasDom: esBag || nombres.has(n+' domingo')};
-  });
-  return _vi;
+function hoyISO(){ return fechaISO(new Date()); }
+function mananaISO(){ const d=new Date(); d.setDate(d.getDate()+1); return fechaISO(d); }
+function fechaYaConfirmada(fecha){
+  // Usa confirmaciones (estado real) si están cargadas; si no, cae al historial
+  const c = confirmaciones[fecha];
+  if(c){
+    const c1 = c['chepito1'];
+    const c2 = c['chepito2'];
+    return !!(c1 && c1.confirmado && c2 && c2.confirmado);
+  }
+  return !!(historial[fecha] && historial[fecha].guardadoEn);
 }
-async function loadOverrides(){
-  if(!useSupa) return;
-  const {data,error}=await supa.from('catalogo_overrides').select('*');
+function proximaFechaPendiente(){
+  // Retorna la fecha más próxima (empezando por HOY) que aún no tiene ambas confirmaciones.
+  // Si la producción de hoy todavía no está ingresada/confirmada por las dos sucursales,
+  // la que toca es la de HOY; apenas las dos confirman, pasa a la del día siguiente.
+  const d = new Date(hoyISO()+'T12:00:00');
+  for(let i=0; i<15; i++){
+    const f = fechaISO(d);
+    if(!fechaYaConfirmada(f)) return f;
+    d.setDate(d.getDate()+1);
+  }
+  return mananaISO();
+}
+function formatFechaLarga(fechaStr){
+  return new Date(fechaStr+'T12:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
+}
+
+// Cambia la app a otra fecha: actualiza el selector y carga los datos de ese día
+async function irAFecha(fecha){
+  fechaActual = fecha;
+  const sel = document.getElementById('fechaSel');
+  if(sel) sel.value = fecha;
+  loadLocal(fechaActual);
+  if(useSupabase){
+    await loadFromSupabase(fechaActual);
+    await loadConfirmacionesSupabase(fechaActual);
+    await loadImpresosSupabase(fechaActual);
+    await loadSolicitudesSupabase(fechaActual);
+  }
+  renderAll();
+}
+
+// La app arranca en la fecha PENDIENTE de ingresar (ver proximaFechaPendiente):
+// normalmente mañana (porque se ingresa de noche la producción del día siguiente),
+// pero si la de hoy todavía no está confirmada por las dos sucursales, arranca en hoy.
+// Este valor inicial es provisional: init() lo recalcula cuando ya cargaron los datos.
+let fechaActual = mananaISO();
+let tabActiva = 'chepito1';
+let filtro = '';
+let saveTimer = null;
+
+// confirmaciones[fecha][sucursal] = {confirmado:true, hora:'...'}
+// Cuando una sucursal confirma, sus campos de cantidad quedan bloqueados
+// para que en el taller sepan que ya está completo y no va a cambiar.
+let confirmaciones = {};
+
+function estaConfirmado(fecha, sucursal){
+  return !!(confirmaciones[fecha] && confirmaciones[fecha][sucursal]);
+}
+function loadConfirmacionesLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_confirmaciones');
+    if(raw) confirmaciones = JSON.parse(raw);
+  }catch(e){}
+}
+function saveConfirmacionesLocal(){
+  try{ localStorage.setItem('chepito_confirmaciones', JSON.stringify(confirmaciones)); }catch(e){}
+}
+async function loadConfirmacionesSupabase(fecha){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('confirmaciones').select('*').eq('fecha', fecha);
   if(error){ console.error(error); return; }
-  overrides={}; _nf=null; _vi=null;
-  (data||[]).forEach(r=>{ overrides[r.fila]={nombre:r.nombre,codigo:r.codigo,familia:r.familia,peso:r.peso,activo:r.activo}; });
+  if(!confirmaciones[fecha]) confirmaciones[fecha] = {};
+  (data||[]).forEach(r=>{ confirmaciones[fecha][r.sucursal] = {confirmado:r.confirmado, hora:r.hora}; });
 }
-
-/* ---------------- vínculo producto de producción -> producto de Costos ----------------
-   Auto por nombre (tolerante a plural/singular y a los sufijos "sabado"/"domingo"
-   de los baguette). Solo se guarda lo que el usuario cambia a mano. */
-const REC_KEY='chepito_gasto_recetas';
-let gRec={};
-function loadRec(){ try{ const r=JSON.parse(localStorage.getItem(REC_KEY)); if(r&&typeof r==='object') gRec=r; }catch(e){} }
-function saveRec(){ try{ localStorage.setItem(REC_KEY, JSON.stringify(gRec)); }catch(e){} }
-
-function productosCostos(){ try{ return state.productos||[]; }catch(e){ return []; } }
-function autoMatchProducto(nombre){
-  const prods=productosCostos(); if(!prods.length) return null;
-  const base=stripDia(nombre);                     // quita " sabado" / " domingo"
-  const candidatos=[normp(nombre), normp(base)];
-  const candSing=[singular(nombre), singular(base)];
-  return prods.find(x=>candidatos.includes(normp(x.nombre)))
-      || prods.find(x=>candSing.includes(singular(x.nombre)))
-      || null;
-}
-function costosProdForFila(fila, nombre){
-  const ex=gRec[String(fila)];
-  if(ex!==undefined){
-    if(ex==='__none__') return null;
-    const p=productosCostos().find(x=>x.id===ex);
-    if(p) return p;               // vínculo manual válido
+async function setConfirmacion(fecha, sucursal, confirmado){
+  if(!confirmado && historial[fecha] && historial[fecha].bloqueadoPorAdmin) return;
+  if(!confirmaciones[fecha]) confirmaciones[fecha] = {};
+  const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  confirmaciones[fecha][sucursal] = {confirmado, hora};
+  saveConfirmacionesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('confirmaciones').upsert({fecha, sucursal, confirmado, hora}, {onConflict:'fecha,sucursal'});
+    if(error) console.error(error);
   }
-  return autoMatchProducto(nombre); // automático por nombre
-}
-
-/* ---------------- expansión receta -> insumos (materias primas) ---------------- */
-function accumInsumo(tipoRef, refId, baseQty, acc, visiting){
-  if(!(baseQty>0)) return;
-  if(tipoRef==='insumo'){ acc[refId]=(acc[refId]||0)+baseQty; return; }
-  const rec = getReceta(refId); if(!rec) return;
-  if(visiting.has(rec.id)) return;              // guardia anti-circular
-  visiting.add(rec.id);
-  const rendBase = toBase(rec.rendCant, rec.rendUnidad);
-  if(rendBase>0){
-    const factor = baseQty/rendBase;
-    (rec.componentes||[]).forEach(c=>{
-      accumInsumo(c.tipoRef, c.refId, toBase(c.cantidad,c.unidad)*factor, acc, visiting);
-    });
-  }
-  visiting.delete(rec.id);
-}
-function expandProducto(prod, count, acc){
-  (prod.componentes||[]).forEach(c=>{
-    accumInsumo(c.tipoRef, c.refId, toBase(c.cantidad,c.unidad)*count, acc, new Set());
-  });
-}
-function fmtCantidad(baseQty, unidad){
-  let fam=null; try{ fam=(UNIDADES[unidad]||{}).familia; }catch(e){}
-  if(fam==='peso')    return baseQty>=1000 ? nfmt(baseQty/1000,2)+' kg' : nfmt(baseQty,baseQty%1?1:0)+' g';
-  if(fam==='volumen') return baseQty>=1000 ? nfmt(baseQty/1000,2)+' L'  : nfmt(baseQty,baseQty%1?1:0)+' ml';
-  return nfmt(baseQty, baseQty%1?2:0)+' u';
-}
-
-/* ---------------- costo/consumo de un conjunto de unidades ---------------- */
-function costoInsumo(id, baseQty){
-  const ins=getInsumo(id); if(!ins) return null;
-  let per=Infinity; try{ per=costoBaseInsumo(ins); }catch(e){}
-  const costo = isFinite(per)? baseQty*per : NaN;
-  return {id, nombre:ins.nombre, unidad:ins.unidad, baseQty, costo};
-}
-function costOfUnits(unitsByFila){
-  const nombreFila = nombrePorFila();
-  const acc={};
-  const sinReceta=[], perProduct=[];
-  Object.keys(unitsByFila).forEach(fs=>{
-    const fila=Number(fs), count=unitsByFila[fila]||0; if(count<=0) return;
-    const nombre = nombreFila[fila] || ('#'+fila);
-    const prod = costosProdForFila(fila, nombre);
-    if(!prod){ sinReceta.push({fila, nombre, count}); return; }
-    const pacc={};
-    expandProducto(prod, count, pacc);
-    let pcosto=0; const pmats=[];
-    Object.keys(pacc).forEach(id=>{
-      acc[id]=(acc[id]||0)+pacc[id];
-      const r=costoInsumo(id, pacc[id]); if(!r) return;
-      if(isFinite(r.costo)) pcosto+=r.costo;
-      pmats.push(r);
-    });
-    pmats.sort((a,b)=>(isFinite(b.costo)?b.costo:-1)-(isFinite(a.costo)?a.costo:-1));
-    perProduct.push({fila, catNombre:nombre, prodNombre:prod.nombre, count, costo:pcosto, materias:pmats});
-  });
-  let total=0; const materias=[];
-  Object.keys(acc).forEach(id=>{
-    const r=costoInsumo(id, acc[id]); if(!r) return;
-    if(isFinite(r.costo)) total+=r.costo;
-    materias.push(r);
-  });
-  materias.sort((a,b)=>(isFinite(b.costo)?b.costo:-1)-(isFinite(a.costo)?a.costo:-1));
-  sinReceta.sort((a,b)=>b.count-a.count);
-  perProduct.sort((a,b)=>(isFinite(b.costo)?b.costo:-1)-(isFinite(a.costo)?a.costo:-1));
-  return {total, materias, sinReceta, perProduct};
-}
-
-/* ---------------- estado del período ---------------- */
-let mode='dia';                 // 'dia' | 'semana' | 'mes' — abre en el día de hoy
-let selDate=todayISO();         // ancla para día / semana
-let curYear=new Date().getFullYear();
-let selMonth=new Date().getMonth();
-let yearRows=[]; let loadedYear=null; let cargando=false;
-
-function neededYear(){ return (mode==='mes') ? curYear : Number(selDate.slice(0,4)); }
-function periodo(){
-  if(mode==='dia')    return {ini:selDate, fin:selDate, label:fmtDiaLargo(selDate), tipo:'día'};
-  if(mode==='semana'){ const mo=mondayOf(selDate), su=addDays(mo,6); return {ini:mo, fin:su, label:'Semana '+fmtDM(mo)+' al '+fmtDM(su)+' '+su.slice(0,4), tipo:'semana'}; }
-  const mm=String(selMonth+1).padStart(2,'0');
-  return {ini:curYear+'-'+mm+'-01', fin:finDeMes(curYear,selMonth), label:MESES[selMonth]+' '+curYear, tipo:'mes'};
-}
-const _dowCache={};
-function dowOf(iso){ let d=_dowCache[iso]; if(d===undefined){ d=parseISO(iso).getDay(); _dowCache[iso]=d; } return d; } // 0=domingo · 6=sábado
-function unitsInRange(ini, fin){
-  const vi=variantPorFila();
-  const u={}; let tot=0;
-  yearRows.forEach(r=>{
-    const f=String(r.fecha).slice(0,10);
-    if(f<ini || f>fin) return;
-    const q=Number(r.cantidad)||0; if(!q) return;
-    const v=vi[r.fila], dow=dowOf(f);
-    if(v){
-      if(v.tipo==='sab'){ if(dow!==6) return; }
-      else if(v.tipo==='dom'){ if(dow!==0) return; }
-      else if((dow===6 && v.hasSab) || (dow===0 && v.hasDom)) return;  // base no cuenta si su variante del finde existe
+  // Si con esto quedaron AMBAS sucursales confirmadas, se guarda el respaldo histórico
+  const c1 = confirmaciones[fecha] && confirmaciones[fecha]['chepito1'];
+  const c2 = confirmaciones[fecha] && confirmaciones[fecha]['chepito2'];
+  if(c1 && c1.confirmado && c2 && c2.confirmado){
+    await guardarHistorial(fecha);
+    // Esta fecha ya quedó completa: pasar automáticamente a la próxima pendiente
+    if(confirmado && fecha === fechaActual){
+      const siguiente = proximaFechaPendiente();
+      if(siguiente !== fechaActual){
+        alert(`✅ ¡Listo! Las dos sucursales ya confirmaron la producción del ${formatFechaLarga(fecha)}.\n\nAhora sigue ingresar la del ${formatFechaLarga(siguiente)}.`);
+        await irAFecha(siguiente);
+        return;
+      }
     }
-    u[r.fila]=(u[r.fila]||0)+q; tot+=q;
-  });
-  return {u, tot};
-}
-
-async function fetchProduccion(ini,fin){
-  const page=1000; let from=0, all=[];
-  while(true){
-    const {data,error}=await supa.from('produccion')
-      .select('fecha,sucursal,fila,cantidad').gte('fecha',ini).lte('fecha',fin)
-      .range(from, from+page-1);
-    if(error) throw error;
-    all=all.concat(data||[]);
-    if(!data || data.length<page) break;
-    from+=page;
   }
-  return all;
+  renderAll();
 }
-function status(msg,isErr){ const el=$('g_status'); if(!el) return; el.textContent=msg||''; el.className='hint'+(isErr?' pend':''); }
 
-async function ensureData(force){
-  loadRec();
-  if(!useSupa){ status('⚠️ No hay conexión a Supabase. Abrí la pestaña Producción una vez para conectar.', true); yearRows=[]; render(); return; }
-  const y=neededYear();
-  if(force || loadedYear!==y){
-    cargando=true; status('Cargando producción de '+y+'… ⏳'); render();
-    try{
-      await loadOverrides();
-      yearRows = await fetchProduccion(y+'-01-01', y+'-12-31');
-      loadedYear=y; status('');
-    }catch(e){
-      console.error(e); status('⚠️ No se pudo leer de Supabase: '+(e.message||e), true);
-      yearRows=[]; loadedYear=null;
+/* ---- HISTORIAL: respaldo de la producción del día una vez que ambas sucursales confirman ---- */
+// historial[fecha] = {chepito1:{fila:cant,...}, chepito2:{...}, guardadoEn:'texto'}
+let historial = {};
+function loadHistorialLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_historial');
+    if(raw) historial = JSON.parse(raw);
+  }catch(e){}
+}
+function saveHistorialLocal(){
+  try{ localStorage.setItem('chepito_historial', JSON.stringify(historial)); }catch(e){}
+}
+async function loadHistorialSupabase(){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('historial_produccion').select('*');
+  if(error){ console.error(error); return; }
+  historial = {};
+  (data||[]).forEach(r=>{ historial[r.fecha] = {...r.snapshot, guardadoEn:r.guardado_en}; });
+}
+async function guardarHistorial(fecha){
+  const guardadoEn = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  const bloqueadoPorAdmin = historial[fecha] ? (historial[fecha].bloqueadoPorAdmin || false) : false;
+  const snapshot = {
+    chepito1: {...getDatos(fecha,'chepito1')},
+    chepito2: {...getDatos(fecha,'chepito2')},
+    receta: calcularRecetaResumen(), // fecha siempre es la fechaActual en el momento de guardar
+    bloqueadoPorAdmin
+  };
+  historial[fecha] = {...snapshot, guardadoEn};
+  saveHistorialLocal();
+  if(useSupabase){
+    const {error} = await supa.from('historial_produccion').upsert(
+      {fecha, snapshot, guardado_en:guardadoEn}, {onConflict:'fecha'});
+    if(error) console.error(error);
+  }
+}
+async function borrarHistorial(fecha){
+  if(!confirm(`¿Borrar el respaldo del ${formatFechaLarga(fecha)}?\n\nEsta acción no se puede deshacer.`)) return;
+  delete historial[fecha];
+  saveHistorialLocal();
+  if(useSupabase){
+    const {error} = await supa.from('historial_produccion').delete().eq('fecha', fecha);
+    if(error){ console.error(error); alert('Error al borrar: ' + error.message); return; }
+  }
+  historialAbierto = null;
+  renderHistorial();
+}
+async function toggleBloqueoAdmin(fecha){
+  if(!historial[fecha]) return;
+  const nuevoBloqueado = !historial[fecha].bloqueadoPorAdmin;
+  historial[fecha].bloqueadoPorAdmin = nuevoBloqueado;
+  saveHistorialLocal();
+  if(useSupabase){
+    const {guardadoEn, ...snapFields} = historial[fecha];
+    const {error} = await supa.from('historial_produccion').upsert(
+      {fecha, snapshot: snapFields, guardado_en: guardadoEn}, {onConflict:'fecha'});
+    if(error){ console.error(error); historial[fecha].bloqueadoPorAdmin = !nuevoBloqueado; renderHistorial(); return; }
+  }
+  renderAll();
+}
+
+async function checkAutoBloqueo(){
+  const ahora = new Date();
+  const fechaHoy = hoyISO();
+  const esMediaDia = ahora.getHours() >= 12;
+  let cambios = false;
+  for(const fecha of Object.keys(historial)){
+    if(historial[fecha].bloqueadoPorAdmin) continue;
+    // Bloquear si la fecha ya pasó, o si es hoy y ya son las 12
+    if(fecha < fechaHoy || (fecha === fechaHoy && esMediaDia)){
+      historial[fecha].bloqueadoPorAdmin = true;
+      cambios = true;
+      if(useSupabase){
+        const {guardadoEn, ...snapFields} = historial[fecha];
+        const {error} = await supa.from('historial_produccion').upsert(
+          {fecha, snapshot: snapFields, guardado_en: guardadoEn}, {onConflict:'fecha'});
+        if(error) console.error('Auto-bloqueo error:', error);
+      }
     }
-    cargando=false;
   }
-  render();
+  // Respaldo automático al mediodía — solo si no se guardó ya hoy
+  if(esMediaDia){
+    const yaHaySnap = historial[fechaHoy] && historial[fechaHoy].respaldoMediodia;
+    if(!yaHaySnap){ await guardarRespaldoMediodia(fechaHoy); cambios = true; }
+  }
+  if(cambios){ saveHistorialLocal(); renderAll(); }
 }
 
-/* ---------------- render ---------------- */
-function render(){
-  // controles
-  document.querySelectorAll('#g_seg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
-  const dIn=$('g_date');
-  if(dIn){ dIn.style.display=(mode==='mes')?'none':''; dIn.value=selDate; }
-  if($('g_perlabel')) $('g_perlabel').textContent = periodo().label;
-  renderDetail();
-  renderPerProducto();
-  renderResumen();
-  renderVinculos();
+function programarAutoBloqueo(){
+  const ahora = new Date();
+  const proximoMediaDia = new Date(ahora);
+  proximoMediaDia.setHours(12, 0, 0, 0);
+  if(ahora >= proximoMediaDia) proximoMediaDia.setDate(proximoMediaDia.getDate() + 1);
+  const msPara = proximoMediaDia - ahora;
+  setTimeout(()=>{ checkAutoBloqueo(); programarAutoBloqueo(); }, msPara);
+}
+async function guardarRespaldoMediodia(fecha){
+  const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  let snap1 = {}, snap2 = {};
+  if(useSupabase){
+    const {data} = await supa.from('produccion').select('*').eq('fecha', fecha);
+    (data||[]).forEach(r=>{
+      if(r.sucursal==='chepito1') snap1[r.fila]=r.cantidad;
+      else if(r.sucursal==='chepito2') snap2[r.fila]=r.cantidad;
+    });
+  } else {
+    snap1 = {...getDatos(fecha,'chepito1')};
+    snap2 = {...getDatos(fecha,'chepito2')};
+  }
+  if(!historial[fecha]) historial[fecha] = {guardadoEn: null, bloqueadoPorAdmin: false};
+  historial[fecha].respaldoMediodia = {chepito1: snap1, chepito2: snap2, hora};
+  saveHistorialLocal();
+  if(useSupabase){
+    const {guardadoEn, ...snapFields} = historial[fecha];
+    const {error} = await supa.from('historial_produccion').upsert(
+      {fecha, snapshot: snapFields, guardado_en: guardadoEn||hora}, {onConflict:'fecha'});
+    if(error) console.error('Respaldo mediodía error:', error);
+  }
 }
 
-function sinRecetaHtml(list){
-  const items=list.slice(0,60).map(x=>`${escH(x.nombre)} (${x.count} u)`).join(' · ');
-  return `<div class="hint" style="margin-top:10px"><b class="pend">Sin receta (${list.length}):</b> ${items}${list.length>60?' …':''}<br>
-    Se produjeron pero no tienen receta en Costos, así que no suman materia prima. Definí su receta en Costos o vinculalos en «⚙️ Vínculos» abajo.</div>`;
+/* ---- IMPRESIÓN: si ya se imprimió y alguien cambia algo, avisar y desmarcar ---- */
+// impresos[fecha] = {impreso:true, hora:'texto'}
+let impresos = {};
+function loadImpresosLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_impresos');
+    if(raw) impresos = JSON.parse(raw);
+  }catch(e){}
 }
-
-function renderDetail(){
-  const el=$('g_monthDetail'), ttl=$('g_monthTitle'); if(!el) return;
-  const per=periodo();
-  if(ttl) ttl.textContent=per.label;
-  if(cargando){ el.innerHTML='<div class="hint">Cargando…</div>'; return; }
-  const {u,tot}=unitsInRange(per.ini, per.fin);
-  if(tot<=0){ el.innerHTML='<div class="hint">No hay producción registrada en '+artTipo(per.tipo)+'.</div>'; return; }
-  const {total, materias, sinReceta, perProduct}=costOfUnits(u);
-  if(!materias.length){
-    el.innerHTML=`<div class="hint pend">Se produjeron ${nfmt(tot,0)} unidades, pero ninguno de esos productos tiene receta en Costos todavía.</div>`+sinRecetaHtml(sinReceta);
+function saveImpresosLocal(){
+  try{ localStorage.setItem('chepito_impresos', JSON.stringify(impresos)); }catch(e){}
+}
+async function loadImpresosSupabase(fecha){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('impresos').select('*').eq('fecha', fecha).maybeSingle();
+  if(error && error.code!=='PGRST116'){ console.error(error); return; }
+  if(data) impresos[fecha] = {impreso:data.impreso, hora:data.hora};
+}
+async function marcarImpreso(fecha){
+  const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  impresos[fecha] = {impreso:true, hora};
+  saveImpresosLocal();
+  if(useSupabase){
+    const {error} = await supa.from('impresos').upsert({fecha, impreso:true, hora}, {onConflict:'fecha'});
+    if(error) console.error(error);
+  }
+}
+async function desmarcarImpreso(fecha){
+  if(!impresos[fecha] || !impresos[fecha].impreso) return;
+  impresos[fecha] = {impreso:false, hora:impresos[fecha].hora};
+  saveImpresosLocal();
+  if(useSupabase){
+    const {error} = await supa.from('impresos').upsert({fecha, impreso:false, hora:impresos[fecha].hora}, {onConflict:'fecha'});
+    if(error) console.error(error);
+  }
+}
+function onImprimir(){
+  if(tabActiva==='historial'){
+    if(!historialAbierto){ alert('Abrí el día que querés guardar/imprimir del historial (hacé clic sobre la fecha) y volvé a darle a Imprimir.'); return; }
+    window.print();
     return;
   }
-  // qué se produjo × costo de su receta = cuánto cuesta producirlo
-  let prows='', pUn=0;
-  perProduct.forEach(p=>{
-    pUn+=p.count;
-    const via = normp(p.catNombre)===normp(p.prodNombre) ? '' : ` <span class="hint">(receta: ${escH(p.prodNombre)})</span>`;
-    prows+=`<tr>
-      <td>${escH(p.catNombre)}${via}</td>
-      <td class="num">${nfmt(p.count,0)}</td>
-      <td class="num">₡${nfmt(p.count>0?p.costo/p.count:NaN,2)}</td>
-      <td class="num">${money0(p.costo)}</td></tr>`;
-  });
-  let body='', hayPend=false;
-  materias.forEach(r=>{
-    const pend=!isFinite(r.costo); if(pend) hayPend=true;
-    body+=`<tr class="${pend?'pend':''}">
-      <td>${escH(r.nombre)}</td>
-      <td class="num">${fmtCantidad(r.baseQty,r.unidad)}</td>
-      <td class="num">${isFinite(r.costo)?money0(r.costo):'<span class="pend">sin precio</span>'}</td></tr>`;
-  });
-  el.innerHTML=`
-    <div class="bignum">${money0(total)}</div>
-    <div class="hint" style="margin:2px 0 14px">costó producir ${artTipo(per.tipo)} en materia prima · ${nfmt(tot,0)} unidades producidas</div>
-    <div class="listhead" style="margin-top:14px">Costo por producto (unidades × receta)</div>
-    <table class="gt">
-      <thead><tr><th>Producto</th><th class="num">Unidades</th><th class="num">₡ por unidad</th><th class="num">Costo</th></tr></thead>
-      <tbody>${prows}</tbody>
-      <tfoot><tr class="tot"><td>TOTAL</td><td class="num">${nfmt(pUn,0)}</td><td></td><td class="num">${money0(total)}</td></tr></tfoot>
-    </table>
-    <div class="listhead">Materia prima que se gasta</div>
-    <table class="gt">
-      <thead><tr><th>Materia prima</th><th class="num">Cantidad usada</th><th class="num">Costo</th></tr></thead>
-      <tbody>${body}</tbody>
-      <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td class="num">${money0(total)}</td></tr></tfoot>
-    </table>
-    ${hayPend?'<div class="hint pend" style="margin-top:8px">⚠️ «sin precio»: revisá el costo de compra de ese insumo en la pestaña Costos.</div>':''}
-    ${sinReceta.length?sinRecetaHtml(sinReceta):''}
-    <div class="hint" style="margin-top:8px">📅 Familia baguette (mañana-tarde): de lunes a viernes cuenta solo el renglón normal, el sábado solo los «sabado» y el domingo solo los «domingo».</div>`;
+  marcarImpreso(fechaActual);
+  window.print();
+  renderAll();
 }
 
-function renderPerProducto(){
-  const el=$('g_prodTable'); if(!el) return;
-  const per=periodo();
-  const {u}=unitsInRange(per.ini, per.fin);
-  const {perProduct}=costOfUnits(u);
-  if(!perProduct.length){ el.innerHTML='<p class="hint">Todavía no hay productos con receta en '+artTipo(per.tipo)+'.</p>'; return; }
-  let html='';
-  perProduct.forEach(p=>{
-    const lines=p.materias.map(mm=>`<tr><td>${escH(mm.nombre)}</td>
-      <td class="num">${fmtCantidad(mm.baseQty,mm.unidad)}</td>
-      <td class="num">${isFinite(mm.costo)?money0(mm.costo):'<span class="pend">sin precio</span>'}</td></tr>`).join('');
-    const via = normp(p.catNombre)===normp(p.prodNombre) ? '' : ` <span class="hint">(receta: ${escH(p.prodNombre)})</span>`;
-    html+=`<div style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:2px solid var(--line);padding-bottom:5px;margin-bottom:5px">
-        <span><b>${escH(p.catNombre)}</b> <span class="hint">${nfmt(p.count,0)} u × ₡${nfmt(p.count>0?p.costo/p.count:NaN,2)}</span>${via}</span>
-        <span class="num" style="font-weight:800">${money0(p.costo)}</span>
-      </div>
-      <table class="gt"><tbody>${lines}</tbody></table>
+// ¿Este producto de molde compartido está descuadrado? (hay cantidad pero el total
+// entre las dos sucursales no es múltiplo del molde). Mientras esté así, NO sale
+// en la programación: consolidado, receta ni TXT.
+function loteDescuadrado(fecha, fila){
+  const lote = lotesCompartidos[fila] || 0;
+  if(!lote) return false;
+  const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+  const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+  const total = v1+v2;
+  return total>0 && total % lote !== 0;
+}
+
+// Banner para Consolidado/Receta con los productos que quedaron fuera de la programación
+function avisoLotesHTML(){
+  const problemas = loteProblemas(fechaActual);
+  if(!problemas.length) return '';
+  return `<div class="banner-pendiente" style="display:block;">🧩 <strong>Fuera de la programación</strong> — estos productos de molde compartido no cuadran entre Chepito 1 y Chepito 2 y NO se incluyen (ni en consolidado, ni en receta, ni en el TXT) hasta que cuadren:<br>• ${problemas.join('<br>• ')}</div>`;
+}
+
+// Revisa todos los productos de molde compartido: devuelve los que NO cuadran (no son múltiplo del molde)
+function loteProblemas(fecha){
+  const problemas = [];
+  Object.keys(lotesCompartidos).forEach(filaStr=>{
+    const fila = Number(filaStr);
+    const lote = lotesCompartidos[fila];
+    if(!lote) return;
+    const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+    const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+    const total = v1+v2;
+    if(total>0 && total % lote !== 0){
+      const nombreProd = (allCatalogRows().find(c=>c.fila===fila)||{}).nombre || ('producto #'+fila);
+      problemas.push(`${cap(nombreProd)}: Chepito 1 = ${v1}, Chepito 2 = ${v2} (suman ${total}, el molde es de ${lote})`);
+    }
+  });
+  return problemas;
+}
+
+function onConfirmarProduccion(sucursal){
+  const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  if(!esAdmin() && fechaActual > proximaFechaPendiente()){
+    alert(`🚫 Hay que seguir el orden: primero se ingresa y confirma la producción del ${formatFechaLarga(proximaFechaPendiente())}.`);
+    return;
+  }
+  const sinContestar = solicitudesPendientes(fechaActual);
+  if(sinContestar.length){
+    alert('🚫 No se puede confirmar todavía.\n\nHay solicitudes de molde compartido SIN CONTESTAR entre las panaderías:\n\n' + sinContestar.join('\n') + '\n\nHay que aceptarlas, rechazarlas o cancelarlas antes de poder confirmar la producción del día.');
+    return;
+  }
+  const problemas = loteProblemas(fechaActual);
+  if(problemas.length){
+    if(!confirm('⚠️ Hay productos de molde compartido que NO cuadran entre Chepito 1 y Chepito 2:\n\n' + problemas.join('\n') + '\n\nEsos productos NO van a salir en la programación (consolidado, receta ni TXT) mientras no cuadren.\n\n¿Querés confirmar igual y dejarlos fuera? (Cancelar = volver a corregir)')) return;
+  }
+  if(!confirm(`¿Confirmás que ${etiqueta} ya terminó de ingresar toda la producción para el ${formatFechaLarga(fechaActual)}?\n\nDespués de confirmar, los campos quedan bloqueados y no se van a poder cambiar hasta que le des "Desbloquear".`)) return;
+  setConfirmacion(fechaActual, sucursal, true);
+}
+function onDesbloquearProduccion(sucursal){
+  if(historial[fechaActual] && historial[fechaActual].bloqueadoPorAdmin){
+    alert('🔒 Esta producción fue bloqueada por el administrador — ya está impresa y en proceso de elaboración.\n\nLo que tenés que ingresar ahora es la producción del día siguiente.\n\nCambiá la fecha arriba para continuar.');
+    return;
+  }
+  const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  if(!confirm(`¿Desbloquear ${etiqueta} para corregir la producción del ${formatFechaLarga(fechaActual)}? Recordá volver a confirmar cuando termines.`)) return;
+  setConfirmacion(fechaActual, sucursal, false);
+}
+
+// overrides[fila] = {nombre, codigo, familia, peso, activo}
+// Permite: cambiar familia/peso de un producto base, desactivarlo (quitarlo),
+// o agregar productos nuevos (fila >= 90000) que no existían en el Excel original.
+let overrides = {};
+let nextCustomId = 90001;
+
+const GRUPOS = [
+  {key:'salada', label:'🥖 Masa Salada'},
+  {key:'dulce', label:'🍩 Masa Dulce'},
+  {key:'faja_ranchera', label:'🌯 Faja Ranchera'},
+  {key:'arrollado_canela_nuevo', label:'🥐 Arrollado Canela'},
+  {key:'baguette', label:'🥖 Baguette / Mañana-Tarde'},
+  {key:null, label:'📦 Otros / Empacados'}
+];
+const FAMILIAS_EDITABLES = [
+  {key:'salada', label:'Masa Salada'},
+  {key:'dulce', label:'Masa Dulce'},
+  {key:'faja_ranchera', label:'Faja Ranchera'},
+  {key:'arrollado_canela_nuevo', label:'Arrollado Canela'},
+  {key:'baguette', label:'Baguette / Mañana-Tarde'},
+  {key:'', label:'Otros / Empacados'}
+];
+
+/* ---- Catálogo efectivo = BASE_CATALOG + overrides (ediciones/altas/bajas) ---- */
+function allCatalogRows(){
+  const map = {};
+  BASE_CATALOG.forEach(c=>{
+    map[c[0]] = {fila:c[0], codigo:c[1], nombre:c[2], familia:c[3]||'', peso:c[4], activo:true, base:true};
+  });
+  Object.keys(overrides).forEach(filaStr=>{
+    const fila = Number(filaStr);
+    const ov = overrides[filaStr];
+    if(map[fila]){
+      map[fila] = {...map[fila], ...ov, fila};
+    } else {
+      map[fila] = {fila, codigo:ov.codigo||'', nombre:ov.nombre||'(sin nombre)', familia:ov.familia||'', peso:ov.peso||0, activo: ov.activo!==false, base:false};
+    }
+  });
+  return Object.values(map).sort((a,b)=>a.fila-b.fila);
+}
+function effectiveCatalog(){
+  return allCatalogRows().filter(c=>c.activo!==false);
+}
+
+function loadOverridesLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_catalogo_overrides');
+    if(raw) overrides = JSON.parse(raw);
+  }catch(e){}
+}
+function saveOverridesLocal(){
+  try{ localStorage.setItem('chepito_catalogo_overrides', JSON.stringify(overrides)); }catch(e){}
+}
+async function loadOverridesSupabase(){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('catalogo_overrides').select('*');
+  if(error){ console.error(error); return; }
+  overrides = {};
+  (data||[]).forEach(r=>{
+    overrides[r.fila] = {nombre:r.nombre, codigo:r.codigo, familia:r.familia, peso:r.peso, activo:r.activo};
+    if(r.fila >= nextCustomId) nextCustomId = r.fila+1;
+  });
+}
+async function guardarOverride(fila, cambios){
+  const fc = allCatalogRows().find(c=>c.fila===fila) || {fila};
+  const merged = {nombre:fc.nombre, codigo:fc.codigo, familia:fc.familia, peso:fc.peso, activo:fc.activo!==false, ...cambios};
+  overrides[fila] = merged;
+  saveOverridesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('catalogo_overrides').upsert({fila, ...merged}, {onConflict:'fila'});
+    if(error) console.error(error);
+  }
+}
+
+function agregarProductoNuevo(nombre, peso, familia, codigo){
+  const fila = nextCustomId++;
+  guardarOverride(fila, {nombre, codigo:codigo||'', familia, peso:Number(peso)||0, activo:true});
+  renderAll();
+}
+function quitarProducto(fila){
+  guardarOverride(fila, {activo:false});
+  renderAll();
+}
+function restaurarProducto(fila){
+  guardarOverride(fila, {activo:true});
+  renderAll();
+}
+function cambiarFamilia(fila, familia){
+  guardarOverride(fila, {familia});
+  renderAll();
+}
+function cambiarPeso(fila, peso){
+  guardarOverride(fila, {peso:Number(peso)||0});
+  renderAll();
+}
+// ---- Códigos INDEPENDIENTES por sucursal (Chepito 1 y Chepito 2 pueden tener códigos distintos) ----
+// codigosSucursal[sucursal][fila] = codigo
+let codigosSucursal = {chepito1:{}, chepito2:{}};
+
+function codigoDe(fila, sucursal){
+  const propio = codigosSucursal[sucursal] && codigosSucursal[sucursal][fila];
+  if(propio!==undefined && propio!==null) return propio;
+  const fc = allCatalogRows().find(c=>c.fila===fila);
+  return fc ? (fc.codigo||'') : '';
+}
+
+function loadCodigosLocal(){
+  try{
+    const raw = localStorage.getItem('chepito_codigos_sucursal');
+    if(raw) codigosSucursal = JSON.parse(raw);
+  }catch(e){}
+  if(!codigosSucursal.chepito1) codigosSucursal.chepito1 = {};
+  if(!codigosSucursal.chepito2) codigosSucursal.chepito2 = {};
+}
+function saveCodigosLocal(){
+  try{ localStorage.setItem('chepito_codigos_sucursal', JSON.stringify(codigosSucursal)); }catch(e){}
+}
+async function loadCodigosSupabase(){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('codigos_sucursal').select('*');
+  if(error){ console.error(error); return; }
+  codigosSucursal = {chepito1:{}, chepito2:{}};
+  (data||[]).forEach(r=>{
+    if(!codigosSucursal[r.sucursal]) codigosSucursal[r.sucursal] = {};
+    codigosSucursal[r.sucursal][r.fila] = r.codigo;
+  });
+}
+async function cambiarCodigoSucursal(fila, sucursal, codigo){
+  const limpio = (codigo||'').toString().trim();
+  if(!codigosSucursal[sucursal]) codigosSucursal[sucursal] = {};
+  codigosSucursal[sucursal][fila] = limpio;
+  saveCodigosLocal();
+  renderAll();
+  if(useSupabase){
+    const {error} = await supa.from('codigos_sucursal').upsert({fila, sucursal, codigo:limpio}, {onConflict:'fila,sucursal'});
+    if(error) console.error(error);
+  }
+}
+
+function getDatos(fecha, sucursal){
+  if(!datos[fecha]) datos[fecha] = {};
+  if(!datos[fecha][sucursal]) datos[fecha][sucursal] = {};
+  return datos[fecha][sucursal];
+}
+
+function localKey(fecha){ return 'chepito_produccion_' + fecha; }
+
+function loadLocal(fecha){
+  try{
+    const raw = localStorage.getItem(localKey(fecha));
+    if(raw) datos[fecha] = JSON.parse(raw);
+  }catch(e){}
+}
+function saveLocal(fecha){
+  try{ localStorage.setItem(localKey(fecha), JSON.stringify(datos[fecha]||{})); }catch(e){}
+}
+
+async function loadFromSupabase(fecha){
+  if(!useSupabase) return;
+  setStatus('cargando...', '');
+  const {data, error} = await supa.from('produccion').select('*').eq('fecha', fecha);
+  if(error){ setStatus('error al cargar', 'err'); console.error(error); return; }
+  datos[fecha] = {};
+  (data||[]).forEach(r=>{
+    if(!datos[fecha][r.sucursal]) datos[fecha][r.sucursal] = {};
+    datos[fecha][r.sucursal][r.fila] = r.cantidad;
+  });
+  setStatus('al día', 'ok');
+}
+
+async function guardarCelda(fecha, sucursal, fila, cantidad, inputEl){
+  // Orden consecutivo: no se puede guardar en una fecha posterior mientras haya
+  // una anterior pendiente de confirmar por las dos sucursales.
+  if(!esAdmin() && fecha > proximaFechaPendiente()){
+    alert(`🚫 Hay que seguir el orden: primero se ingresa y confirma la producción del ${formatFechaLarga(proximaFechaPendiente())}. Hasta entonces no se puede llenar la del ${formatFechaLarga(fecha)}.`);
+    if(inputEl) inputEl.value = getDatos(fecha, sucursal)[fila] || '';
+    return false;
+  }
+  getDatos(fecha, sucursal)[fila] = cantidad;
+  saveLocal(fecha);
+
+  // Producto de molde compartido: SIEMPRE se guarda (cada sucursal pone su parte,
+  // ej: molde de 8 = 4 y 4). Si el total no cuadra con el molde, se le manda una
+  // SOLICITUD a la otra sucursal para que complete lo que falta (ella la acepta o
+  // la rechaza). Mientras esté sin contestar no se puede confirmar el día, y
+  // mientras no cuadre, el producto NO sale en la programación.
+  const lote = lotesCompartidos[fila] || 0;
+  if(lote>0){
+    const nuevaSolicitud = await sincronizarSolicitudLote(fecha, fila, sucursal);
+    if(nuevaSolicitud){
+      const otraSucursal = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+      const etiquetaOtra = otraSucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+      const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+      const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+      const total = v1+v2;
+      const falta = Math.ceil(total/lote)*lote - total;
+      alert(`📨 Solicitud enviada a ${etiquetaOtra}\n\n"${nombreProducto(fila)}" sale en moldes de ${lote} y entre las dos sucursales van ${total}.\n\nSe le mandó una solicitud a ${etiquetaOtra} para que ponga ${falta} más y completar el molde. Le va a aparecer para ACEPTARLA o RECHAZARLA.\n\nMientras esté sin contestar, ninguna de las dos puede confirmar la producción del día — y mientras no cuadre, este producto no sale en la programación.`);
+    }
+  }
+
+  // Si ya se había impreso este día, avisar que hay que reimprimir
+  if(impresos[fecha] && impresos[fecha].impreso){
+    alert('⚠️ Ya se había impreso la producción/receta de este día.\n\nComo acabás de cambiar algo, avisale al taller para que vuelvan a imprimir la hoja actualizada.');
+    desmarcarImpreso(fecha);
+  }
+
+  renderAll();
+  if(!useSupabase) return;
+  setStatus('guardando...', '');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const {error} = await supa.from('produccion').upsert({
+      fecha, sucursal, fila, cantidad
+    }, {onConflict:'fecha,sucursal,fila'});
+    if(error){ setStatus('error al guardar', 'err'); console.error(error); }
+    else setStatus('guardado ✓', 'ok');
+  }, 350);
+}
+
+// Guarda la cantidad y mueve el cursor al siguiente producto (como al presionar Enter en Excel)
+async function guardarCeldaYAvanzar(fecha, sucursal, fila, cantidad, inputEl){
+  const container = inputEl.closest('.view');
+  const inputsAntes = container ? Array.from(container.querySelectorAll('input[type=number]')) : [];
+  const idx = inputsAntes.indexOf(inputEl);
+  const resultado = await guardarCelda(fecha, sucursal, fila, cantidad, inputEl);
+  if(resultado===false) return; // rechazado (fecha fuera de orden) — no avanza
+  if(container && idx>-1){
+    const inputsDespues = Array.from(container.querySelectorAll('input[type=number]'));
+    let siguiente = idx+1;
+    while(siguiente < inputsDespues.length && inputsDespues[siguiente].disabled) siguiente++;
+    if(siguiente < inputsDespues.length){
+      inputsDespues[siguiente].focus();
+      inputsDespues[siguiente].select();
+    }
+  }
+}
+
+// Plantilla de cantidades de baguette (calculadas del Excel: Cantidad ingresada - Ajuste = Cantidad final)
+// fila -> [chepito1, chepito2]
+const BAGUETTE_TEMPLATE = {
+  504:[20,55], 505:[20,75], 506:[45,75],       // Baguette con queso: normal / sabado / domingo
+  507:[10,35], 508:[35,35], 509:[25,25],       // Baguette sin queso
+  510:[5,5],   511:[5,5],   512:[5,10],        // Baguette cebolla
+  513:[0,0],   514:[0,0],   515:[0,0],         // Baguette ajonjoli
+  516:[5,8],   517:[5,8],   518:[5,8],         // Manita con queso
+  519:[5,2],   520:[5,2],   521:[5,2],         // Manita sin queso
+  522:[6,9],   523:[6,10],  524:[6,13],        // Lagartos
+  525:[0,0],   526:[5,10],  527:[5,10],        // Baguette premium
+  528:[3,3],   529:[3,3],   530:[3,3],         // Puntas con queso
+  531:[0,3],   532:[0,3],   533:[0,3],         // Puntas sin queso
+  534:[2,4],   535:[2,4],   536:[2,4],         // Trillizos con queso
+  537:[2,3],   538:[2,3],   539:[2,3]          // Trillizos sin queso
+};
+
+async function aplicarPlantillaBaguetteSiVacio(){
+  const registros = [];
+  for(const filaStr in BAGUETTE_TEMPLATE){
+    const fila = Number(filaStr);
+    const [c1, c2] = BAGUETTE_TEMPLATE[filaStr];
+    const d1 = getDatos(fechaActual,'chepito1');
+    const d2 = getDatos(fechaActual,'chepito2');
+    if(c1>0 && !d1[fila]){ d1[fila] = c1; registros.push({fecha:fechaActual, sucursal:'chepito1', fila, cantidad:c1}); }
+    if(c2>0 && !d2[fila]){ d2[fila] = c2; registros.push({fecha:fechaActual, sucursal:'chepito2', fila, cantidad:c2}); }
+  }
+  if(registros.length===0) return;
+  saveLocal(fechaActual);
+  if(useSupabase){
+    const {error} = await supa.from('produccion').upsert(registros, {onConflict:'fecha,sucursal,fila'});
+    if(error) console.error(error);
+  }
+}
+
+function setStatus(text, cls){
+  const el = document.getElementById('saveStatus');
+  el.textContent = text;
+  el.className = 'status ' + (cls||'');
+}
+
+/* ====================== RENDER: ENTRADA POR SUCURSAL ====================== */
+function renderEntrada(sucursal, containerId){
+  const cont = document.getElementById(containerId);
+  const d = getDatos(fechaActual, sucursal);
+  const f = filtro.trim().toLowerCase();
+  const catalogo = effectiveCatalog();
+  const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  const conf = confirmaciones[fechaActual] && confirmaciones[fechaActual][sucursal];
+  const bloqueado = !!(conf && conf.confirmado);
+  // Orden consecutivo: si hay una fecha anterior pendiente (ej: la de hoy sin confirmar),
+  // las fechas posteriores quedan bloqueadas hasta que la pendiente la confirmen las dos.
+  const pendiente = proximaFechaPendiente();
+  const fueraDeOrden = !esAdmin() && fechaActual > pendiente;
+  let html = '';
+
+  if(fueraDeOrden){
+    html += `<div class="banner-pendiente">
+      🚫 <strong>Fecha bloqueada — hay que seguir el orden:</strong> primero se ingresa y confirma la producción del <strong>${formatFechaLarga(pendiente)}</strong>. Mientras tanto no se puede llenar la del ${formatFechaLarga(fechaActual)}.
+      <button onclick="irAFecha('${pendiente}')">📅 Ir al ${formatFechaLarga(pendiente)}</button>
     </div>`;
+  } else if(bloqueado){
+    const adminLocked = !!(historial[fechaActual] && historial[fechaActual].bloqueadoPorAdmin);
+    html += `<div class="banner-confirmado">
+      ✅ <strong>${etiqueta} confirmó</strong> la producción del ${formatFechaLarga(fechaActual)} (${conf.hora}). Los campos están bloqueados.
+      ${adminLocked
+        ? `<span style="background:#fdecea;color:#8a2c22;border-radius:8px;padding:7px 13px;font-weight:700;font-size:13px;display:inline-block;">🔒 Bloqueado por Admin — ya se imprimió. Ingresá la del día siguiente.</span>`
+        : `<button onclick="onDesbloquearProduccion('${sucursal}')">🔓 Desbloquear para corregir</button>`}
+    </div>`;
+  } else {
+    html += `<div class="banner-pendiente">
+      ⏳ Todavía falta confirmar la producción de <strong>${etiqueta}</strong> para el ${formatFechaLarga(fechaActual)}.
+      <button onclick="onConfirmarProduccion('${sucursal}')">✅ Ya terminé — Confirmar</button>
+    </div>`;
+  }
+
+  // Notificaciones de solicitudes de molde compartido entre panaderías
+  const otraSuc = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+  const etiquetaOtraSuc = otraSuc==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  const sols = getSolicitudes(fechaActual);
+  Object.keys(sols).forEach(filaStr=>{
+    const fila = Number(filaStr);
+    const sol = sols[filaStr];
+    const loteSol = lotesCompartidos[fila] || 0;
+    if(!loteSol) return;
+    const v1 = getDatos(fechaActual,'chepito1')[fila] || 0;
+    const v2 = getDatos(fechaActual,'chepito2')[fila] || 0;
+    const totalSol = v1+v2;
+    if(totalSol<=0 || totalSol % loteSol === 0) return; // ya quedó resuelta
+    const falta = Math.ceil(totalSol/loteSol)*loteSol - totalSol;
+    const vOtra = sucursal==='chepito1' ? v2 : v1;
+    if(sol.estado==='pendiente' && sol.de!==sucursal){
+      html += `<div class="banner-pendiente">
+        🔔 <strong>Solicitud de ${etiquetaOtraSuc}:</strong> puso ${vOtra} de <strong>${nombreProducto(fila)}</strong> (molde de ${loteSol}) y te pide poner <strong>${falta}</strong> para completar ${totalSol+falta}.
+        <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="aceptarSolicitud(${fila},'${sucursal}')" style="background:var(--accent2);">✅ Aceptar (poner ${falta})</button>
+          <button onclick="rechazarSolicitud(${fila},'${sucursal}')">❌ Rechazar</button>
+        </span>
+      </div>`;
+    } else if(sol.estado==='pendiente' && sol.de===sucursal){
+      html += `<div class="banner-pendiente" style="background:#fff8e8;border-color:#ffe08a;color:#8a6d3b;">
+        📨 <strong>Esperando respuesta de ${etiquetaOtraSuc}:</strong> le pediste completar <strong>${nombreProducto(fila)}</strong> (faltan ${falta} para el molde de ${loteSol}). Nadie puede confirmar el día hasta que conteste.
+        <button onclick="descartarSolicitud(${fila})" style="background:#8a6d3b;">🗑️ Cancelar solicitud</button>
+      </div>`;
+    } else if(sol.estado==='rechazada' && sol.de===sucursal){
+      html += `<div class="banner-pendiente">
+        ❌ <strong>${etiquetaOtraSuc} rechazó</strong> tu solicitud de <strong>${nombreProducto(fila)}</strong>${sol.horaRespuesta?` (${sol.horaRespuesta})`:''}. Ajustá tu cantidad para que cuadre el molde de ${loteSol}; si lo dejás así, queda fuera de la programación.
+        <button onclick="descartarSolicitud(${fila})">OK, entendido</button>
+      </div>`;
+    }
   });
-  el.innerHTML=html;
+
+  GRUPOS.forEach(g=>{
+    const items = catalogo.filter(c=>{
+      const fam = c.familia || null;
+      if(fam !== g.key) return false;
+      if(f && !c.nombre.toLowerCase().includes(f)) return false;
+      return true;
+    }).sort((a,b)=> a.nombre.localeCompare(b.nombre, 'es', {sensitivity:'base'}));
+    if(items.length===0) return;
+    html += `<div class="grupo"><h2>${g.label}</h2>`;
+    items.forEach(c=>{
+      const val = d[c.fila] || '';
+      const codigoActual = codigoDe(c.fila, sucursal);
+      const sinCodigo = !codigoActual;
+      const esProductoBloqueado = PRODUCTOS_CANTIDAD_BLOQUEADA.includes(c.fila) && !esAdmin();
+      const dis = (bloqueado || esProductoBloqueado || fueraDeOrden) ? 'disabled' : '';
+      const tituloBloqueo = esProductoBloqueado ? 'Solo Admin puede cambiar esta cantidad' : '';
+
+      const lote = lotesCompartidos[c.fila] || 0;
+      let avisoLote = '';
+      if(lote>0){
+        const otraSucursal = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+        const otraVal = getDatos(fechaActual, otraSucursal)[c.fila] || 0;
+        const total = (val||0) + otraVal;
+        const etiquetaOtra = otraSucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+        if(total>0 && total % lote !== 0){
+          avisoLote = `<div class="aviso-lote mal">🧩 Molde de ${lote} — Chepito 1+2 suman ${total}, no cuadra: NO sale en la programación hasta que cuadre. Coordiná con ${etiquetaOtra} (tiene ${otraVal}).</div>`;
+        } else if(total>0 && total % lote === 0){
+          avisoLote = `<div class="aviso-lote ok">🧩 Molde de ${lote} — cuadra perfecto (${total} entre las dos sucursales).</div>`;
+        } else {
+          avisoLote = `<div class="aviso-lote info">🧩 Este producto sale en moldes de ${lote} — coordiná con ${etiquetaOtra} antes de pedir.</div>`;
+        }
+      }
+
+      html += `<div class="fila-wrap">
+      <div class="fila">
+        <input type="text" class="codigo-input ${sinCodigo?'falta':''}" value="${codigoActual||''}" ${!esAdmin()?'disabled':''}
+          placeholder="cód." title="${!esAdmin() ? 'Solo Admin puede cambiar el código' : (sinCodigo?'Falta el código — necesario para el TXT':'')}"
+          onchange="cambiarCodigoSucursal(${c.fila}, '${sucursal}', this.value)">
+        <span class="nombre">${cap(c.nombre)}${esProductoBloqueado?' 🔒':''}</span>
+        <input type="number" min="0" step="1" inputmode="numeric" value="${val}" ${dis} title="${tituloBloqueo}"
+          data-fila="${c.fila}" data-sucursal="${sucursal}"
+          onchange="guardarCelda(fechaActual,'${sucursal}',${c.fila},parseFloat(this.value)||0,this)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault(); guardarCeldaYAvanzar(fechaActual,'${sucursal}',${c.fila},parseFloat(this.value)||0,this);}">
+      </div>
+      ${avisoLote}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  if(catalogo.length===0) html += '<div class="empty">Sin productos que coincidan con la búsqueda.</div>';
+  cont.innerHTML = html;
 }
 
-function tablaResumen(rows, footLabel, footUn, footTot){
-  return `<table class="gt">
-    <thead><tr><th>${mode==='mes'?'Mes':mode==='semana'?'Semana':'Día'}</th><th class="num">Unidades</th><th class="num">Materias primas</th></tr></thead>
-    <tbody>${rows||''}</tbody>
-    ${footLabel?`<tfoot><tr class="tot"><td>${footLabel}</td><td class="num">${nfmt(footUn,0)}</td><td class="num">${money0(footTot)}</td></tr></tfoot>`:''}
+/* ====================== RENDER: CONSOLIDADO ====================== */
+function totalProducto(fila){
+  const d1 = getDatos(fechaActual,'chepito1')[fila] || 0;
+  const d2 = getDatos(fechaActual,'chepito2')[fila] || 0;
+  return {c1:d1, c2:d2, total:d1+d2};
+}
+
+// Resumen de si Chepito 1 y Chepito 2 ya confirmaron la producción del día (para consolidado/receta/impresión)
+function estadoConfirmacionHTML(){
+  const c1 = confirmaciones[fechaActual] && confirmaciones[fechaActual]['chepito1'];
+  const c2 = confirmaciones[fechaActual] && confirmaciones[fechaActual]['chepito2'];
+  const ok1 = !!(c1 && c1.confirmado), ok2 = !!(c2 && c2.confirmado);
+  const badge = (ok, etiqueta, hora) => `<span class="estado-sucursal ${ok?'ok':'pendiente'}">${ok?'✅':'⏳'} ${etiqueta}${ok?` confirmado (${hora})`:' pendiente'}</span>`;
+  const ambos = ok1 && ok2;
+  const imp = impresos[fechaActual];
+  const yaImpreso = !!(imp && imp.impreso);
+  const badgeImpreso = `<span class="estado-sucursal ${yaImpreso?'ok':'pendiente'}">${yaImpreso?`🖨️ Impreso (${imp.hora})`:'🖨️ Sin imprimir'}</span>`;
+  return `<div class="${ambos?'banner-confirmado':'banner-pendiente'}" style="gap:14px;">
+    <div>${ambos ? '✅ <strong>Ambas sucursales confirmaron</strong> — se puede imprimir con confianza.' : '⚠️ <strong>Todavía falta confirmar</strong> — puede que falten datos por ingresar.'}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${badge(ok1,'Chepito 1', c1?c1.hora:'')}
+      ${badge(ok2,'Chepito 2', c2?c2.hora:'')}
+      ${badgeImpreso}
+    </div>
+  </div>`;
+}
+
+function renderConsolidado(){
+  const cont = document.getElementById('viewConsolidado');
+  const f = filtro.trim().toLowerCase();
+  // La familia baguette (baguette, manitas, lagartos, puntas, trillizos, la nación, la teja...)
+  // se ve en pantalla en su propia sección, pero NO sale en la hoja impresa.
+  let rows = '', bagRows = '';
+  let granTotal = 0, bagTotal = 0;
+  let filas = 0, bagFilas = 0;
+  let html = estadoConfirmacionHTML() + avisoLotesHTML();
+  effectiveCatalog().forEach(c=>{
+    if(f && !c.nombre.toLowerCase().includes(f)) return;
+    if(loteDescuadrado(fechaActual, c.fila)) return; // molde compartido descuadrado: fuera de la programación
+    const t = totalProducto(c.fila);
+    if(t.total<=0) return;
+    const cod1 = codigoDe(c.fila,'chepito1');
+    const cod2 = codigoDe(c.fila,'chepito2');
+    const codTxt = (cod1===cod2) ? (cod1||'') : `<span title="Chepito 1">${cod1||'—'}</span> / <span title="Chepito 2">${cod2||'—'}</span>`;
+    const tr = `<tr><td>${codTxt}</td><td>${cap(c.nombre)}</td>
+      <td class="num">${t.c1||''}</td><td class="num">${t.c2||''}</td>
+      <td class="num"><strong>${t.total||''}</strong></td></tr>`;
+    if(c.familia==='baguette'){ bagFilas++; bagTotal += t.total; bagRows += tr; }
+    else { filas++; granTotal += t.total; rows += tr; }
+  });
+  if(filas===0 && bagFilas===0){
+    cont.innerHTML = html + '<div class="empty" style="padding:30px;">No hay producción registrada para este día todavía.</div>';
+    return;
+  }
+  if(filas>0){
+    html += `
+    <table>
+      <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="total"><td colspan="4">TOTAL UNIDADES</td><td class="num">${granTotal}</td></tr></tfoot>
+    </table>`;
+  }
+  if(bagFilas>0){
+    html += `
+    <div class="no-imprimir" style="margin-top:14px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">🥖 <strong>Baguette / Mañana-Tarde</strong> — solo se ve en pantalla, NO sale en la hoja impresa.</div>
+      <table>
+        <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
+        <tbody>${bagRows}</tbody>
+        <tfoot><tr class="total"><td colspan="4">TOTAL BAGUETTE</td><td class="num">${bagTotal}</td></tr></tfoot>
+      </table>
+    </div>`;
+  }
+  cont.innerHTML = html;
+}
+
+/* ====================== RECETA (replica fórmulas de pdcon) ====================== */
+function productosFamilia(fam){
+  return effectiveCatalog().filter(c=>c.familia===fam).map(c=>{
+    // Molde compartido descuadrado: no entra en la receta/programación (cuenta como 0)
+    const cant = loteDescuadrado(fechaActual, c.fila) ? 0 : totalProducto(c.fila).total;
+    return {nombre:c.nombre, codigo:c.codigo, peso:c.peso, cantidad:cant, total: cant*c.peso};
+  });
+}
+function sumFamilia(fam){
+  const items = productosFamilia(fam);
+  let totalUnid=0, totalPeso=0;
+  items.forEach(i=>{ totalUnid+=i.cantidad; totalPeso+=i.total; });
+  return {unidades: totalUnid, gramos: totalPeso, items};
+}
+
+function tablaProduccion(items){
+  const activos = items.filter(i=>i.cantidad>0);
+  if(activos.length===0) return '<div class="empty" style="padding:10px;">No hay producción registrada hoy para esta masa.</div>';
+  let rows = activos.map(i=>`<tr><td>${cap(i.nombre)}</td><td class="num">${i.peso} g</td>
+    <td class="centro">${i.cantidad}</td><td class="num"><strong>${fmtG(i.total)}</strong></td></tr>`).join('');
+  const sumaTotal = activos.reduce((s,i)=>s+i.total,0);
+  return `<table class="tabla-prod" style="margin-top:8px;margin-bottom:4px;">
+    <thead><tr><th>Producto</th><th>Peso unit.</th><th class="centro">Cantidad a producir</th><th>Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr class="total"><td colspan="3">TOTAL MASA</td><td class="num">${fmtG(sumaTotal)}</td></tr></tfoot>
   </table>`;
 }
 
-function renderResumen(){
-  const el=$('g_yearTable'); if(!el) return;
-  if(cargando){ el.innerHTML='<div class="hint">Cargando…</div>'; return; }
-  if(mode==='mes')    return renderResumenMeses(el);
-  if(mode==='semana') return renderResumenSemanas(el);
-  return renderResumenDias(el);
-}
+// Calcula el resumen de receta (igual que la pestaña Receta del día) para el día actualmente seleccionado.
+// Se usa tanto para mostrar en pantalla como para guardar en el respaldo del historial.
+function calcularRecetaResumen(){
+  const salada = sumFamilia('salada');
+  const D42 = salada.gramos;
+  const harinaS = D42*0.5796, sal = D42*0.0145, azucarS = harinaS*5/100,
+        levaduraS = harinaS*2.5/100, mejoranteS = D42*0.005822, margarinaS = D42*0.0522,
+        quesoS = D42*0.02902, huevoS = D42*0.02902, aguaS = D42*0.27245, propinatoS = harinaS*0.3/100;
+  const totalS = harinaS+sal+azucarS+levaduraS+mejoranteS+margarinaS+quesoS+huevoS+aguaS;
 
-function renderResumenMeses(el){
-  if($('g_resTitle')) $('g_resTitle').textContent='Resumen por mes';
-  if($('g_resSub')) $('g_resSub').textContent='Tocá un mes para ver su detalle arriba.';
-  let rows='', yTot=0, yUn=0;
-  for(let mi=0; mi<12; mi++){
-    const mm=String(mi+1).padStart(2,'0');
-    const {u,tot}=unitsInRange(curYear+'-'+mm+'-01', finDeMes(curYear,mi));
-    const {total}=costOfUnits(u);
-    if(isFinite(total)) yTot+=total; yUn+=tot;
-    rows+=`<tr class="clickable${mi===selMonth?' sel':''}" data-mi="${mi}"><td>${MESES[mi]}</td>
-      <td class="num">${tot?nfmt(tot,0):'—'}</td><td class="num">${tot?money0(total):'—'}</td></tr>`;
-  }
-  const nav=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-     <button class="btn btn-sm" id="g_yprev">‹</button><b class="num">${curYear}</b><button class="btn btn-sm" id="g_ynext">›</button></div>`;
-  el.innerHTML = nav + tablaResumen(rows, 'Año '+curYear, yUn, yTot);
-  const yp=$('g_yprev'), yn=$('g_ynext');
-  if(yp) yp.onclick=()=>{ curYear--; ensureData(); };
-  if(yn) yn.onclick=()=>{ curYear++; ensureData(); };
-  el.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ selMonth=Number(tr.dataset.mi); render(); });
-}
+  const dulce = sumFamilia('dulce');
+  const D84 = dulce.gramos;
+  const harinaD = D84*0.565, azucarD = D84*0.1412, huevoD = D84*0.05649, margarinaD = D84*0.05082,
+        levaduraD = harinaD*2.7/100, mejoranteD = D84*0.005671, aguaD = D84*0.16947,
+        vainillaD = D84*0.002855, propinatoD = harinaD*0.3/100;
+  const totalD = harinaD+azucarD+huevoD+margarinaD+levaduraD+mejoranteD+aguaD+vainillaD;
 
-function renderResumenDias(el){
-  const y=Number(selDate.slice(0,4)), mi=Number(selDate.slice(5,7))-1, mm=String(mi+1).padStart(2,'0');
-  if($('g_resTitle')) $('g_resTitle').textContent='Días de '+MESES[mi]+' '+y+' con producción';
-  if($('g_resSub')) $('g_resSub').textContent='Tocá un día para ver su detalle arriba.';
-  const nDays=Number(finDeMes(y,mi).slice(8,10));
-  let rows='', mTot=0, mUn=0;
-  for(let d=1; d<=nDays; d++){
-    const iso=`${y}-${mm}-${String(d).padStart(2,'0')}`;
-    const {u,tot}=unitsInRange(iso,iso); if(tot<=0) continue;
-    const {total}=costOfUnits(u); if(isFinite(total)) mTot+=total; mUn+=tot;
-    rows+=`<tr class="clickable${iso===selDate?' sel':''}" data-d="${iso}"><td>${fmtDiaCorto(iso)}</td>
-      <td class="num">${nfmt(tot,0)}</td><td class="num">${money0(total)}</td></tr>`;
-  }
-  if(!rows) rows='<tr><td colspan="3" class="hint">Sin producción registrada este mes.</td></tr>';
-  el.innerHTML = tablaResumen(rows, 'Mes', mUn, mTot);
-  el.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ selDate=tr.dataset.d; render(); });
-}
+  const fr = sumFamilia('faja_ranchera');
+  const B149 = fr.unidades * 150;
 
-function renderResumenSemanas(el){
-  if($('g_resTitle')) $('g_resTitle').textContent='Últimas semanas';
-  if($('g_resSub')) $('g_resSub').textContent='Tocá una semana para ver su detalle arriba.';
-  const anchor=mondayOf(selDate);
-  let rows='';
-  for(let k=0; k<12; k++){
-    const mo=addDays(anchor,-7*k), su=addDays(mo,6);
-    const {u,tot}=unitsInRange(mo,su);
-    const {total}=costOfUnits(u);
-    rows+=`<tr class="clickable${mo===anchor?' sel':''}" data-w="${mo}"><td>${fmtDM(mo)} – ${fmtDM(su)}</td>
-      <td class="num">${tot?nfmt(tot,0):'—'}</td><td class="num">${tot?money0(total):'—'}</td></tr>`;
-  }
-  el.innerHTML = tablaResumen(rows, '', 0, 0);
-  el.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ selDate=tr.dataset.w; render(); });
-}
+  const ac = sumFamilia('arrollado_canela_nuevo');
+  const B159 = ac.unidades * 130;
 
-function renderVinculos(){
-  const el=$('g_vincTable'); if(!el) return;
-  const per=periodo();
-  const {u}=unitsInRange(per.ini, per.fin);
-  const nombreFila=nombrePorFila();
-  const producidos = Object.keys(u).map(Number).filter(f=>(u[f]||0)>0)
-    .map(f=>({fila:f, nombre:nombreFila[f]||('#'+f), count:u[f]}))
-    .sort((a,b)=> a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'}));
-  if(!producidos.length){ el.innerHTML='<p class="hint">No hay productos producidos en '+artTipo(per.tipo)+'.</p>'; return; }
-  const prods=productosCostos();
-  const optsFor = sel => {
-    let h=`<option value="__auto__" ${sel==='__auto__'?'selected':''}>(automático por nombre)</option>`;
-    h+=`<option value="__none__" ${sel==='__none__'?'selected':''}>— sin receta —</option>`;
-    h+=prods.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${escH(p.nombre)}</option>`).join('');
-    return h;
+  return {
+    salada: {unidades:salada.unidades, gramos:D42, ingredientes:[
+      ['Harina', harinaS], ['Sal', sal], ['Azúcar', azucarS], ['Levadura', levaduraS],
+      ['Mejorante', mejoranteS], ['Margarina', margarinaS], ['Queso', quesoS], ['Huevo', huevoS],
+      ['Agua', aguaS], ['Propinato', propinatoS], ['TOTAL MASA', totalS]
+    ]},
+    dulce: {unidades:dulce.unidades, gramos:D84, ingredientes:[
+      ['Harina', harinaD], ['Azúcar', azucarD], ['Huevo', huevoD], ['Margarina', margarinaD],
+      ['Levadura', levaduraD], ['Mejorante', mejoranteD], ['Agua', aguaD], ['Vainilla', vainillaD],
+      ['Propinato', propinatoD], ['TOTAL MASA', totalD]
+    ]},
+    faja_ranchera: {unidades:fr.unidades, gramos:B149, ingredientes:[
+      ['Harina harisol winter', B149*0.57], ['Azúcar', B149*0.06], ['Margarina', B149*0.06],
+      ['Aceite', B149*0.06], ['Sal', B149*0.01], ['Agua', B149*0.23], ['Levadura salada', B149*0.01],
+      ['TOTAL MASA', B149]
+    ]},
+    arrollado_canela_nuevo: {unidades:ac.unidades, gramos:B159, ingredientes:[
+      ['Harina Harisol', B159*0.48], ['Agua', B159*0.29], ['Azúcar', B159*0.1],
+      ['Levadura', B159*0.02], ['Margarina', B159*0.12], ['TOTAL MASA', B159]
+    ]}
   };
-  let rows='';
-  producidos.forEach(pr=>{
-    const ex=gRec[String(pr.fila)];
-    const auto=autoMatchProducto(pr.nombre);
-    let sel, estado;
-    if(ex===undefined){ sel='__auto__'; estado = auto? '✓ '+escH(auto.nombre)+' <span class="hint">(auto)</span>' : '<span class="pend">sin receta</span>'; }
-    else if(ex==='__none__'){ sel='__none__'; estado='<span class="pend">sin receta</span>'; }
-    else { const p=prods.find(x=>x.id===ex); if(p){ sel=p.id; estado='✓ '+escH(p.nombre); } else { sel='__auto__'; estado= auto? '✓ '+escH(auto.nombre)+' <span class="hint">(auto)</span>':'<span class="pend">sin receta</span>'; } }
-    rows+=`<tr>
-      <td>${escH(pr.nombre)} <span class="hint">(${pr.count} u)</span></td>
-      <td><select class="g_rec" data-fila="${pr.fila}">${optsFor(sel)}</select></td>
-      <td class="hint">${estado}</td></tr>`;
-  });
-  el.innerHTML=`<p class="hint" style="margin:0 0 10px">Cada producto producido toma su receta del producto de <b>Costos</b> con el mismo nombre (automático; los baguette «sabado»/«domingo» usan la receta del baguette base). Si el nombre no calza, elegí a mano.</p>
-   <table class="gt"><thead><tr><th>Producto producido</th><th>Receta de Costos</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
-  el.querySelectorAll('select.g_rec').forEach(s=>s.onchange=()=>{
-    const f=s.dataset.fila, v=s.value;
-    if(v==='__auto__') delete gRec[f]; else gRec[f]=v;
-    saveRec(); render();
-  });
 }
 
-/* ---------------- exportar a Excel (CSV) ---------------- */
-function baseUnitLabel(unidad){ let fam=null; try{ fam=(UNIDADES[unidad]||{}).familia; }catch(e){} return fam==='peso'?'g':fam==='volumen'?'ml':'u'; }
-const round2 = n => isFinite(n) ? Math.round(n*100)/100 : '';
-function exportCSV(){
-  const per=periodo();
-  const {u}=unitsInRange(per.ini, per.fin);
-  const {total, materias, perProduct, sinReceta}=costOfUnits(u);
-  const rows=[];
-  rows.push(['Gasto de materias primas', per.label]);
-  rows.push(['Período', per.ini+' a '+per.fin]);
-  rows.push([]);
-  rows.push(['Materia prima','Cantidad','Unidad','Costo (CRC)']);
-  materias.forEach(r=>rows.push([r.nombre, round2(r.baseQty), baseUnitLabel(r.unidad), isFinite(r.costo)?Math.round(r.costo):'']));
-  rows.push(['TOTAL','','',Math.round(total)]);
-  rows.push([]);
-  rows.push(['Costo por producto (unidades × receta)']);
-  rows.push(['Producto','Unidades','CRC por unidad','Costo (CRC)']);
-  perProduct.forEach(p=>rows.push([p.catNombre, p.count, p.count>0?round2(p.costo/p.count):'', Math.round(p.costo)]));
-  rows.push(['TOTAL','','',Math.round(total)]);
-  rows.push([]);
-  rows.push(['Detalle por producto']);
-  rows.push(['Producto','Unidades','Materia prima','Cantidad','Unidad','Costo (CRC)']);
-  perProduct.forEach(p=>{
-    if(!p.materias.length){ rows.push([p.catNombre, p.count, '', '', '', Math.round(p.costo)]); return; }
-    p.materias.forEach((mm,idx)=>rows.push([
-      idx===0?p.catNombre:'', idx===0?p.count:'', mm.nombre, round2(mm.baseQty), baseUnitLabel(mm.unidad), isFinite(mm.costo)?Math.round(mm.costo):''
-    ]));
+function renderReceta(){
+  const cont = document.getElementById('viewReceta');
+  let html = estadoConfirmacionHTML() + avisoLotesHTML();
+  const R = calcularRecetaResumen();
+
+  // --- MASA SALADA ---
+  const salada = sumFamilia('salada');
+  if(salada.unidades>0) html += recetaCard('Masa Salada', `${R.salada.unidades} unidades · ${(R.salada.gramos/1000).toFixed(1)} kg de masa total`,
+    tablaProduccion(salada.items), R.salada.ingredientes);
+
+  // --- MASA DULCE ---
+  const dulce = sumFamilia('dulce');
+  if(dulce.unidades>0) html += recetaCard('Masa Dulce', `${R.dulce.unidades} unidades · ${(R.dulce.gramos/1000).toFixed(1)} kg de masa total`,
+    tablaProduccion(dulce.items), R.dulce.ingredientes);
+
+  // --- FAJA RANCHERA ---
+  const fr = sumFamilia('faja_ranchera');
+  if(fr.unidades>0) html += recetaCard('Faja Ranchera', `${R.faja_ranchera.unidades} unidades × 150g`,
+    tablaProduccion(fr.items), R.faja_ranchera.ingredientes);
+
+  // --- ARROLLADO CANELA NUEVO ---
+  const ac = sumFamilia('arrollado_canela_nuevo');
+  if(ac.unidades>0) html += recetaCard('Arrollado Canela', `${R.arrollado_canela_nuevo.unidades} unidades × 130g`,
+    tablaProduccion(ac.items), R.arrollado_canela_nuevo.ingredientes);
+
+  // --- RESUMEN BAGUETTE ---
+  const baguetteItems = effectiveCatalog().filter(c=>c.familia==='baguette');
+  let bagRows = '';
+  let bagTotal = 0;
+  baguetteItems.forEach(c=>{
+    if(loteDescuadrado(fechaActual, c.fila)) return; // fuera de la programación hasta que cuadre
+    const t = totalProducto(c.fila).total;
+    if(t>0){ bagRows += `<tr><td>${cap(c.nombre)}</td><td class="num"><strong>${t} u</strong></td></tr>`; bagTotal+=t; }
   });
-  if(sinReceta.length){
-    rows.push([]); rows.push(['Productos sin receta (no suman)']); rows.push(['Producto','Unidades']);
-    sinReceta.forEach(s=>rows.push([s.nombre, s.count]));
+  if(bagRows){
+    html += `<div class="receta-card no-imprimir"><h3>🥖 Baguette / Mañana-Tarde</h3>
+      <div class="meta">Conteo del día — ${bagTotal} unidades en total (no lleva fórmula de masa propia)</div>
+      <table class="tabla-ing"><tbody>${bagRows}</tbody></table></div>`;
   }
-  const csv=rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  const tag = mode==='mes' ? (curYear+'-'+String(selMonth+1).padStart(2,'0')) : (mode==='semana'? ('sem-'+per.ini) : per.ini);
-  a.download='gasto-materias-'+tag+'.csv';
-  a.click(); URL.revokeObjectURL(a.href);
+
+  // --- RESUMEN OTROS / EMPACADOS ---
+  const otros = effectiveCatalog().filter(c=>!c.familia);
+  let otrosRows = '';
+  let otrosTotal = 0;
+  otros.forEach(c=>{
+    if(loteDescuadrado(fechaActual, c.fila)) return; // fuera de la programación hasta que cuadre
+    const t = totalProducto(c.fila).total;
+    if(t>0){ otrosRows += `<tr><td>${cap(c.nombre)}</td><td class="num"><strong>${t} u</strong></td></tr>`; otrosTotal+=t; }
+  });
+  if(otrosRows){
+    html += `<div class="receta-card"><h3>📦 Otros / Empacados (sin receta asociada)</h3>
+      <div class="meta">Conteo informativo — ${otrosTotal} unidades en total</div>
+      <table class="tabla-ing"><tbody>${otrosRows}</tbody></table></div>`;
+  }
+  const banner = estadoConfirmacionHTML() + avisoLotesHTML();
+  if(html===banner){
+    html += '<div class="empty" style="padding:30px;">No hay producción registrada para este día todavía.</div>';
+  }
+  cont.innerHTML = html;
 }
 
-/* ---------------- controles ---------------- */
-const seg=$('g_seg');
-if(seg) seg.addEventListener('click', e=>{
-  const b=e.target.closest('button[data-mode]'); if(!b) return;
-  mode=b.dataset.mode; ensureData();     // puede cambiar el año necesario
+function recetaCard(titulo, meta, tablaHtml, ingredientes){
+  let filas = ingredientes.map(([n,v])=>
+    `<tr><td>${n}</td><td class="num"><strong>${fmtG(v)}</strong></td></tr>`).join('');
+  const tablaIng = `<table class="tabla-ing"><tbody>${filas}</tbody></table>`;
+  return `<div class="receta-card"><h3>${titulo}</h3><div class="meta">${meta}</div>
+    ${tablaHtml}
+    <div style="margin-top:10px;font-size:13px;font-weight:700;color:var(--accent);text-align:center;">Ingredientes necesarios:</div>
+    ${tablaIng}</div>`;
+}
+
+// Primera letra mayúscula, resto minúscula (para mostrar nombres de forma consistente)
+function cap(s){
+  if(!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function fmtG(v){
+  if(v>=1000) return (v/1000).toFixed(2)+' kg';
+  return Math.round(v)+' g';
+}
+
+/* ====================== RENDER: GESTIÓN DE PRODUCTOS ====================== */
+function renderProductos(){
+  const cont = document.getElementById('viewProductos');
+  const f = filtro.trim().toLowerCase();
+  const filas = allCatalogRows()
+    .filter(c=> !f || c.nombre.toLowerCase().includes(f))
+    .sort((a,b)=> a.nombre.localeCompare(b.nombre, 'es', {sensitivity:'base'}));
+
+  let formHtml = `
+    <div class="receta-card">
+      <h3>➕ Agregar producto nuevo</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <input id="npNombre" type="text" placeholder="Nombre del producto" style="flex:2;min-width:160px;padding:8px;border:1px solid var(--line);border-radius:6px;">
+        <input id="npPeso" type="number" placeholder="Peso (g)" style="width:100px;padding:8px;border:1px solid var(--line);border-radius:6px;">
+        <select id="npFamilia" style="padding:8px;border:1px solid var(--line);border-radius:6px;">
+          ${FAMILIAS_EDITABLES.map(fm=>`<option value="${fm.key}">${fm.label}</option>`).join('')}
+        </select>
+        <button onclick="onAgregarProducto()" style="background:var(--accent2);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;">Agregar</button>
+      </div>
+    </div>`;
+
+  let rows = filas.map(c=>{
+    const opts = FAMILIAS_EDITABLES.map(fm=>
+      `<option value="${fm.key}" ${c.familia===fm.key?'selected':''}>${fm.label}</option>`).join('');
+    const inactivo = c.activo===false;
+    const lote = lotesCompartidos[c.fila] || '';
+    return `<tr style="${inactivo?'opacity:.45;':''}">
+      <td>${cap(c.nombre)}${!c.base?' <span style="color:var(--accent2);font-size:11px;">(nuevo)</span>':''}</td>
+      <td><input type="number" value="${c.peso}" style="width:70px;padding:4px;border:1px solid var(--line);border-radius:4px;"
+            onchange="cambiarPeso(${c.fila}, this.value)"> g</td>
+      <td><select onchange="cambiarFamilia(${c.fila}, this.value)">${opts}</select></td>
+      <td><input type="number" min="0" value="${lote}" placeholder="—" title="Tamaño del molde compartido entre Chepito 1 y 2 (0 o vacío = no aplica)"
+            style="width:56px;padding:4px;border:1px solid var(--line);border-radius:4px;"
+            onchange="cambiarLote(${c.fila}, this.value)"></td>
+      <td>${inactivo
+        ? `<button onclick="restaurarProducto(${c.fila})" style="background:var(--accent2);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;">Restaurar</button>`
+        : `<button onclick="quitarProducto(${c.fila})" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;">Quitar</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  cont.innerHTML = formHtml + `
+    <table>
+      <thead><tr><th>Producto</th><th>Peso</th><th>Receta / Familia</th><th>Molde compartido</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function onAgregarProducto(){
+  const nombre = document.getElementById('npNombre').value.trim();
+  const peso = document.getElementById('npPeso').value;
+  const familia = document.getElementById('npFamilia').value;
+  if(!nombre){ alert('Poné un nombre para el producto.'); return; }
+  agregarProductoNuevo(nombre, peso, familia, '');
+  document.getElementById('npNombre').value = '';
+  document.getElementById('npPeso').value = '';
+}
+
+/* ====================== RENDER: HISTORIAL ====================== */
+let historialAbierto = null; // fecha del respaldo que está expandido
+
+function toggleHistorial(fecha){
+  historialAbierto = (historialAbierto===fecha) ? null : fecha;
+  renderHistorial();
+}
+
+/* ---- Helpers que recalculan Consolidado/Receta a partir de un snapshot guardado (no del día activo) ---- */
+function totalProductoSnap(snap, fila){
+  const d1 = (snap.chepito1||{})[fila] || 0;
+  const d2 = (snap.chepito2||{})[fila] || 0;
+  return {c1:d1, c2:d2, total:d1+d2};
+}
+function productosFamiliaSnap(snap, fam){
+  return effectiveCatalog().filter(c=>c.familia===fam).map(c=>{
+    const t = totalProductoSnap(snap, c.fila);
+    return {nombre:c.nombre, codigo:c.codigo, peso:c.peso, cantidad:t.total, total:t.total*c.peso};
+  });
+}
+function sumFamiliaSnap(snap, fam){
+  const items = productosFamiliaSnap(snap, fam);
+  let totalUnid=0, totalPeso=0;
+  items.forEach(i=>{ totalUnid+=i.cantidad; totalPeso+=i.total; });
+  return {unidades: totalUnid, gramos: totalPeso, items};
+}
+
+// Tabla idéntica a la pestaña Consolidado, pero con los datos guardados del respaldo.
+// Igual que en el Consolidado del día: la familia baguette se ve en pantalla
+// en su propia sección pero NO sale en la hoja impresa.
+function tablaConsolidadoSnap(snap){
+  let rows = '', bagRows = '';
+  let granTotal = 0, bagTotal = 0;
+  let filas = 0, bagFilas = 0;
+  effectiveCatalog().forEach(c=>{
+    const t = totalProductoSnap(snap, c.fila);
+    if(t.total<=0) return;
+    const cod1 = codigoDe(c.fila,'chepito1'), cod2 = codigoDe(c.fila,'chepito2');
+    const codTxt = (cod1===cod2) ? (cod1||'') : `<span title="Chepito 1">${cod1||'—'}</span> / <span title="Chepito 2">${cod2||'—'}</span>`;
+    const tr = `<tr><td>${codTxt}</td><td>${cap(c.nombre)}</td>
+      <td class="num">${t.c1||''}</td><td class="num">${t.c2||''}</td>
+      <td class="num"><strong>${t.total||''}</strong></td></tr>`;
+    if(c.familia==='baguette'){ bagFilas++; bagTotal += t.total; bagRows += tr; }
+    else { filas++; granTotal += t.total; rows += tr; }
+  });
+  if(filas===0 && bagFilas===0) return '<div class="empty" style="padding:30px;">Este respaldo no tiene productos.</div>';
+  let html = '';
+  if(filas>0){
+    html += `<table>
+      <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="total"><td colspan="4">TOTAL UNIDADES</td><td class="num">${granTotal}</td></tr></tfoot>
+    </table>`;
+  }
+  if(bagFilas>0){
+    html += `<div class="no-imprimir" style="margin-top:14px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">🥖 <strong>Baguette / Mañana-Tarde</strong> — solo se ve en pantalla, NO sale en la hoja impresa.</div>
+      <table>
+        <thead><tr><th>#</th><th>Producto</th><th>Chepito 1</th><th>Chepito 2</th><th>Total</th></tr></thead>
+        <tbody>${bagRows}</tbody>
+        <tfoot><tr class="total"><td colspan="4">TOTAL BAGUETTE</td><td class="num">${bagTotal}</td></tr></tfoot>
+      </table>
+    </div>`;
+  }
+  return html;
+}
+
+// Receta completa idéntica a la pestaña Receta del día, pero con los datos guardados del respaldo
+function recetaCompletaSnap(snap){
+  let html = '';
+  const salada = sumFamiliaSnap(snap,'salada');
+  const D42 = salada.gramos;
+  const harinaS=D42*0.5796, sal=D42*0.0145, azucarS=harinaS*5/100, levaduraS=harinaS*2.5/100,
+        mejoranteS=D42*0.005822, margarinaS=D42*0.0522, quesoS=D42*0.02902, huevoS=D42*0.02902,
+        aguaS=D42*0.27245, propinatoS=harinaS*0.3/100;
+  const totalS=harinaS+sal+azucarS+levaduraS+mejoranteS+margarinaS+quesoS+huevoS+aguaS;
+  if(salada.unidades>0) html += recetaCard('Masa Salada', `${salada.unidades} unidades · ${(D42/1000).toFixed(1)} kg de masa total`,
+    tablaProduccion(salada.items), [['Harina',harinaS],['Sal',sal],['Azúcar',azucarS],['Levadura',levaduraS],
+    ['Mejorante',mejoranteS],['Margarina',margarinaS],['Queso',quesoS],['Huevo',huevoS],['Agua',aguaS],
+    ['Propinato',propinatoS],['TOTAL MASA',totalS]]);
+
+  const dulce = sumFamiliaSnap(snap,'dulce');
+  const D84 = dulce.gramos;
+  const harinaD=D84*0.565, azucarD=D84*0.1412, huevoD=D84*0.05649, margarinaD=D84*0.05082,
+        levaduraD=harinaD*2.7/100, mejoranteD=D84*0.005671, aguaD=D84*0.16947, vainillaD=D84*0.002855,
+        propinatoD=harinaD*0.3/100;
+  const totalD=harinaD+azucarD+huevoD+margarinaD+levaduraD+mejoranteD+aguaD+vainillaD;
+  if(dulce.unidades>0) html += recetaCard('Masa Dulce', `${dulce.unidades} unidades · ${(D84/1000).toFixed(1)} kg de masa total`,
+    tablaProduccion(dulce.items), [['Harina',harinaD],['Azúcar',azucarD],['Huevo',huevoD],['Margarina',margarinaD],
+    ['Levadura',levaduraD],['Mejorante',mejoranteD],['Agua',aguaD],['Vainilla',vainillaD],
+    ['Propinato',propinatoD],['TOTAL MASA',totalD]]);
+
+  const fr = sumFamiliaSnap(snap,'faja_ranchera');
+  const B149 = fr.unidades*150;
+  if(fr.unidades>0) html += recetaCard('Faja Ranchera', `${fr.unidades} unidades × 150g`,
+    tablaProduccion(fr.items), [['Harina harisol winter',B149*0.57],['Azúcar',B149*0.06],['Margarina',B149*0.06],
+    ['Aceite',B149*0.06],['Sal',B149*0.01],['Agua',B149*0.23],['Levadura salada',B149*0.01],['TOTAL MASA',B149]]);
+
+  const ac = sumFamiliaSnap(snap,'arrollado_canela_nuevo');
+  const B159 = ac.unidades*130;
+  if(ac.unidades>0) html += recetaCard('Arrollado Canela', `${ac.unidades} unidades × 130g`,
+    tablaProduccion(ac.items), [['Harina Harisol',B159*0.48],['Agua',B159*0.29],['Azúcar',B159*0.1],
+    ['Levadura',B159*0.02],['Margarina',B159*0.12],['TOTAL MASA',B159]]);
+
+  const baguetteItems = effectiveCatalog().filter(c=>c.familia==='baguette');
+  let bagRows='', bagTotal=0;
+  baguetteItems.forEach(c=>{
+    const t = totalProductoSnap(snap,c.fila).total;
+    if(t>0){ bagRows += `<tr><td>${cap(c.nombre)}</td><td class="num"><strong>${t} u</strong></td></tr>`; bagTotal+=t; }
+  });
+  if(bagRows) html += `<div class="receta-card no-imprimir"><h3>🥖 Baguette / Mañana-Tarde</h3>
+      <div class="meta">${bagTotal} unidades en total</div>
+      <table class="tabla-ing"><tbody>${bagRows}</tbody></table></div>`;
+
+  const otros = effectiveCatalog().filter(c=>!c.familia);
+  let otrosRows='', otrosTotal=0;
+  otros.forEach(c=>{
+    const t = totalProductoSnap(snap,c.fila).total;
+    if(t>0){ otrosRows += `<tr><td>${cap(c.nombre)}</td><td class="num"><strong>${t} u</strong></td></tr>`; otrosTotal+=t; }
+  });
+  if(otrosRows) html += `<div class="receta-card"><h3>📦 Otros / Empacados</h3>
+      <div class="meta">${otrosTotal} unidades en total</div>
+      <table class="tabla-ing"><tbody>${otrosRows}</tbody></table></div>`;
+
+  if(!html) html = '<div class="empty" style="padding:30px;">Este respaldo no tiene producción de masas.</div>';
+  return html;
+}
+
+// modo de vista elegido por día: 'consolidado' o 'receta'
+let historialModo = {};
+function elegirModoHistorial(fecha, modo){
+  historialModo[fecha] = modo;
+  renderHistorial();
+}
+
+function renderHistorial(){
+  const cont = document.getElementById('viewHistorial');
+  const fechas = Object.keys(historial).sort().reverse();
+  if(fechas.length===0){
+    cont.innerHTML = '<div class="empty" style="padding:30px;">Todavía no hay respaldos guardados. Se guardan automáticamente cuando Chepito 1 y Chepito 2 confirman el mismo día.</div>';
+    return;
+  }
+  let html = '<div class="receta-card"><h3>🗂️ Historial de producción confirmada</h3><div class="meta">Cada vez que ambas sucursales confirman, se guarda un respaldo de ese día. Si alguien cambia algo después, el respaldo se actualiza y —si ya se había impreso— se avisa que hay que reimprimir. Abrí un día y elegí si querés verlo/guardarlo como Consolidado o como Receta del día.</div></div>';
+
+  fechas.forEach(fecha=>{
+    const snap = historial[fecha];
+    const imp = impresos[fecha];
+    const yaImpreso = !!(imp && imp.impreso);
+    let total = 0;
+    Object.values(snap.chepito1||{}).forEach(v=>total+=(v||0));
+    Object.values(snap.chepito2||{}).forEach(v=>total+=(v||0));
+    const abierto = historialAbierto===fecha;
+    const modo = historialModo[fecha] || 'consolidado';
+
+    html += `<div class="grupo" style="margin-bottom:10px;">
+      <h2 style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleHistorial('${fecha}')">
+        <span>${formatFechaLarga(fecha)} — ${total} unidades</span>
+        <span style="font-size:12px;font-weight:normal;">
+          <span class="estado-sucursal ok" style="margin-right:6px;">✅ Respaldo ${snap.guardadoEn}</span>
+          <span class="estado-sucursal ${yaImpreso?'ok':'pendiente'}">${yaImpreso?`🖨️ Impreso ${imp.hora}`:'🖨️ Sin imprimir'}</span>
+          ${snap.bloqueadoPorAdmin ? `<span class="estado-sucursal" style="background:#fdecea;color:#8a2c22;margin-left:6px;">🔒 Bloqueado</span>` : ''}
+          ${esAdmin() ? `<button onclick="event.stopPropagation();toggleBloqueoAdmin('${fecha}')" style="background:${snap.bloqueadoPorAdmin?'var(--accent2)':'#5a4a3a'};color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">${snap.bloqueadoPorAdmin?'🔓 Desbloquear':'🔒 Bloquear'}</button>` : ''}
+          ${esAdmin() ? `<button onclick="event.stopPropagation();borrarHistorial('${fecha}')" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🗑️ Borrar</button>` : ''}
+          ${abierto?' ▲':' ▼'}
+        </span>
+      </h2>`;
+
+    if(abierto){
+      html += `<div style="padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="elegirModoHistorial('${fecha}','consolidado')" style="border:1px solid var(--line);background:${modo==='consolidado'?'var(--accent)':'#fff'};color:${modo==='consolidado'?'#fff':'var(--ink)'};border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">📦 Ver como Consolidado</button>
+        <button onclick="elegirModoHistorial('${fecha}','receta')" style="border:1px solid var(--line);background:${modo==='receta'?'var(--accent)':'#fff'};color:${modo==='receta'?'#fff':'var(--ink)'};border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">🧾 Ver como Receta del día</button>
+        ${snap.respaldoMediodia ? `<button onclick="elegirModoHistorial('${fecha}','mediodia')" style="border:1px solid var(--line);background:${modo==='mediodia'?'var(--accent)':'#fff'};color:${modo==='mediodia'?'#fff':'var(--ink)'};border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">📸 Respaldo mediodía (${snap.respaldoMediodia.hora})</button>` : ''}
+      </div>
+      <div style="padding:0 14px 14px;">
+        ${modo==='mediodia' ? tablaConsolidadoSnap(snap.respaldoMediodia) : modo==='consolidado' ? tablaConsolidadoSnap(snap) : recetaCompletaSnap(snap)}
+      </div>`;
+    }
+    html += `</div>`;
+  });
+
+  cont.innerHTML = html;
+}
+
+
+/* ====================== EXPORTAR TXT (código;cantidad) ====================== */
+// Replica la columna E del Excel original (=codigo&";"&cantidad),
+// pero sumando cantidades cuando el mismo código se repite y quitando espacios en blanco.
+// Determina si el día seleccionado es entre semana, sábado o domingo (para filtrar baguette)
+function tipoDeDia(fechaStr){
+  const dow = new Date(fechaStr+'T12:00:00').getDay(); // 0=domingo, 6=sábado
+  if(dow===6) return 'sabado';
+  if(dow===0) return 'domingo';
+  return 'semana';
+}
+
+function codigosSumados(sucursales){
+  const catalogo = effectiveCatalog();
+  const tipoDia = tipoDeDia(fechaActual);
+  const sumas = {}; // codigo limpio -> cantidad acumulada
+  catalogo.forEach(c=>{
+    // Filtrar baguette/manita/trillizos/etc. según el día: entre semana solo los sin sufijo,
+    // sábado solo los "... sabado", domingo solo los "... domingo".
+    if(c.familia==='baguette'){
+      const esSabado = / sabado$/.test(c.nombre);
+      const esDomingo = / domingo$/.test(c.nombre);
+      if(tipoDia==='semana' && (esSabado||esDomingo)) return;
+      if(tipoDia==='sabado' && !esSabado) return;
+      if(tipoDia==='domingo' && !esDomingo) return;
+    }
+    const codigo = codigoDe(c.fila, sucursales[0]).toString().trim().replace(/\s+/g,'');
+    if(!codigo) return; // sin código, no se exporta
+    if(loteDescuadrado(fechaActual, c.fila)) return; // molde compartido descuadrado: no va al TXT
+    let cant = 0;
+    sucursales.forEach(suc=>{
+      cant += getDatos(fechaActual, suc)[c.fila] || 0;
+    });
+    if(cant<=0) return; // solo lo que se produjo
+    sumas[codigo] = (sumas[codigo]||0) + cant;
+  });
+  return Object.keys(sumas).sort().map(cod=>({codigo:cod, cantidad:sumas[cod]}));
+}
+
+function generarLineasTXT(sucursales){
+  return codigosSumados(sucursales).map(r=>`${r.codigo};${r.cantidad}`).join('\r\n');
+}
+
+function descargarTXT(nombreArchivo, contenido){
+  const blob = new Blob([contenido], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function descargarArchivo(nombreArchivo, contenido, mime){
+  const blob = new Blob([contenido], {type:mime+';charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Respaldo completo: guarda TODO lo que tiene la app en este momento (producción de todos
+// los días, catálogo/overrides, códigos por sucursal, confirmaciones, historial e impresos)
+// en un solo archivo JSON descargable.
+function descargarRespaldoCompleto(){
+  const respaldo = {
+    generado: new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'}),
+    datos, overrides, codigosSucursal, confirmaciones, historial, impresos
+  };
+  const contenido = JSON.stringify(respaldo, null, 2);
+  descargarArchivo(`respaldo_chepito_${hoyISO()}.json`, contenido, 'application/json');
+}
+
+// Busca productos con cantidad>0 pero sin código (no se pueden exportar al TXT de QuPOS)
+function productosSinCodigo(sucursales){
+  const catalogo = effectiveCatalog();
+  const tipoDia = tipoDeDia(fechaActual);
+  const faltantes = [];
+  catalogo.forEach(c=>{
+    if(codigoDe(c.fila, sucursales[0])) return; // ya tiene código en esta sucursal
+    if(c.familia==='baguette'){
+      const esSabado = / sabado$/.test(c.nombre);
+      const esDomingo = / domingo$/.test(c.nombre);
+      if(tipoDia==='semana' && (esSabado||esDomingo)) return;
+      if(tipoDia==='sabado' && !esSabado) return;
+      if(tipoDia==='domingo' && !esDomingo) return;
+    }
+    let cant = 0;
+    sucursales.forEach(suc=>{ cant += getDatos(fechaActual, suc)[c.fila] || 0; });
+    if(cant>0) faltantes.push(`${cap(c.nombre)} (${cant} u)`);
+  });
+  return faltantes;
+}
+
+function onExportarTXT(){
+  let sucursales, etiqueta;
+  if(tabActiva==='chepito1'){ sucursales=['chepito1']; etiqueta='chepito1'; }
+  else if(tabActiva==='chepito2'){ sucursales=['chepito2']; etiqueta='chepito2'; }
+  else { alert('Andá a Chepito 1 o Chepito 2 para exportar el TXT de ese ingreso.'); return; }
+
+  const faltantes = productosSinCodigo(sucursales);
+  if(faltantes.length){
+    alert('⚠️ Estos productos tienen cantidad pero NO tienen código todavía, así que no van a salir en el TXT y no se van a poder ingresar a producción hasta que les pongas el código (en el campo "cód." al lado del producto):\n\n' + faltantes.join('\n'));
+  }
+
+  const problemasLote = loteProblemas(fechaActual);
+  if(problemasLote.length){
+    alert('🧩 Estos productos de molde compartido NO cuadran entre Chepito 1 y Chepito 2, así que NO van en el TXT hasta que cuadren:\n\n' + problemasLote.join('\n'));
+  }
+
+  const lineas = generarLineasTXT(sucursales);
+  if(!lineas){ alert('No hay cantidades ingresadas todavía para ese día.'); return; }
+  descargarTXT(`produccion_${etiqueta}_${fechaActual}.txt`, lineas);
+}
+
+
+const TABS_INFO_LISTA = [
+  {id:'chepito1',   label:'Chepito 1'},
+  {id:'chepito2',   label:'Chepito 2'},
+  {id:'consolidado',label:'Consolidado'},
+  {id:'receta',     label:'Receta del día'},
+  {id:'productos',  label:'⚙️ Productos'},
+  {id:'historial',  label:'🗂️ Historial'},
+  {id:'usuarios',   label:'👥 Usuarios'}
+];
+
+function renderUsuarios(){
+  const cont = document.getElementById('viewUsuarios');
+  if(!cont) return;
+  const lista = getUsuariosLista();
+  let html = `<div class="receta-card"><h3>👥 Gestión de usuarios</h3>
+    <div class="meta">Administrá nombres, claves y permisos de cada usuario. Los cambios se sincronizan en todas las compus al instante.</div></div>`;
+
+  lista.forEach(u=>{
+    const permisosHtml = TABS_INFO_LISTA.map(t=>{
+      const tiene = u.permisos.includes(t.id);
+      return `<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:${tiene?'#e8f3e0':'#f2f2f2'};color:${tiene?'#2e5c1a':'#777'};">
+        <input type="checkbox" ${tiene?'checked':''} onchange="togglePermiso('${u.id}','${t.id}',this.checked)" style="accent-color:var(--accent2);width:14px;height:14px;">
+        ${t.label}
+      </label>`;
+    }).join('');
+
+    const esEsteAdmin = u.permisos.includes('usuarios');
+    html += `<div class="grupo" style="margin-bottom:14px;">
+      <h2 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <span>${u.label}</span>
+        ${!esEsteAdmin ? `<button onclick="eliminarUsuario('${u.id}')" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">🗑️ Eliminar usuario</button>` : ''}
+      </h2>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">PERMISOS (PESTAÑAS CON ACCESO):</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${permisosHtml}</div>
+        </div>
+        <div style="border-top:1px solid var(--line);padding-top:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CLAVE ACTUAL:</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input type="password" id="claveVer_${u.id}" value="${u.clave}" readonly
+              style="flex:1;min-width:160px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#f8f5f0;">
+            <button onclick="toggleVerClave('claveVer_${u.id}',this)"
+              style="border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer;">👁 Ver</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--line);padding-top:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">CAMBIAR NOMBRE / CLAVE:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="font-size:13px;color:var(--muted);min-width:90px;">Nombre:</label>
+              <input type="text" id="label_${u.id}" value="${u.label}" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="font-size:13px;color:var(--muted);min-width:90px;">Nueva clave:</label>
+              <input type="password" id="clave_${u.id}" placeholder="(dejar en blanco = sin cambios)" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="font-size:13px;color:var(--muted);min-width:90px;">Repetir clave:</label>
+              <input type="password" id="clave2_${u.id}" placeholder="Repetir clave nueva" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+            </div>
+            <div>
+              <button onclick="guardarUsuario('${u.id}')" style="background:var(--accent2);color:#fff;border:none;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer;">💾 Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="grupo" style="margin-bottom:14px;">
+    <h2>➕ Agregar nuevo usuario</h2>
+    <div style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;color:var(--muted);min-width:90px;">ID (sin espacios):</label>
+        <input type="text" id="nuevo_id" placeholder="ej: chepito3" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;color:var(--muted);min-width:90px;">Nombre visible:</label>
+        <input type="text" id="nuevo_label" placeholder="ej: 🏠 Chepito 3" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label style="font-size:13px;color:var(--muted);min-width:90px;">Clave:</label>
+        <input type="password" id="nuevo_clave" placeholder="Clave de acceso" style="flex:1;min-width:180px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:14px;">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;">PERMISOS INICIALES:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${TABS_INFO_LISTA.map(t=>`<label style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#f2f2f2;color:#777;">
+            <input type="checkbox" id="nuevo_perm_${t.id}" style="accent-color:var(--accent2);width:14px;height:14px;"> ${t.label}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div>
+        <button onclick="agregarUsuario()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer;">➕ Crear usuario</button>
+      </div>
+    </div>
+  </div>`;
+
+  cont.innerHTML = html;
+}
+
+function toggleVerClave(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='🙈 Ocultar'; }
+  else { inp.type='password'; btn.textContent='👁 Ver'; }
+}
+
+async function togglePermiso(userId, tabId, checked){
+  const lista = getUsuariosLista();
+  const u = lista.find(x=>x.id===userId);
+  if(!u) return;
+  if(checked){ if(!u.permisos.includes(tabId)) u.permisos.push(tabId); }
+  else { u.permisos = u.permisos.filter(p=>p!==tabId); }
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  if(rolActual===userId) aplicarPermisosRol();
+}
+
+async function guardarUsuario(userId){
+  const lista = getUsuariosLista();
+  const u = lista.find(x=>x.id===userId);
+  if(!u) return;
+  const labelEl = document.getElementById('label_'+userId);
+  const claveEl = document.getElementById('clave_'+userId);
+  const clave2El = document.getElementById('clave2_'+userId);
+  if(labelEl && labelEl.value.trim()) u.label = labelEl.value.trim();
+  const nuevaClave = claveEl ? claveEl.value : '';
+  const repetir = clave2El ? clave2El.value : '';
+  if(nuevaClave){
+    if(nuevaClave.length < 4){ alert('La clave debe tener al menos 4 caracteres.'); return; }
+    if(nuevaClave !== repetir){ alert('Las claves no coinciden.'); return; }
+    u.clave = nuevaClave;
+    if(claveEl) claveEl.value = '';
+    if(clave2El) clave2El.value = '';
+  }
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  renderLoginBotones();
+  renderUsuarios();
+  alert('✅ Cambios guardados correctamente.');
+}
+
+async function eliminarUsuario(userId){
+  if(!confirm(`¿Seguro que querés eliminar el usuario "${getLabelRol(userId)}"?`)) return;
+  const lista = getUsuariosLista().filter(u=>u.id!==userId);
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  renderLoginBotones();
+  renderUsuarios();
+}
+
+async function agregarUsuario(){
+  const id = (document.getElementById('nuevo_id').value||'').trim().replace(/\s+/g,'');
+  const label = (document.getElementById('nuevo_label').value||'').trim();
+  const clave = (document.getElementById('nuevo_clave').value||'').trim();
+  if(!id){ alert('El ID no puede estar vacío.'); return; }
+  if(!label){ alert('El nombre visible no puede estar vacío.'); return; }
+  if(clave.length < 4){ alert('La clave debe tener al menos 4 caracteres.'); return; }
+  const lista = getUsuariosLista();
+  if(lista.find(u=>u.id===id)){ alert('Ya existe un usuario con ese ID.'); return; }
+  const permisos = TABS_INFO_LISTA.map(t=>t.id).filter(tid=>{
+    const el = document.getElementById('nuevo_perm_'+tid);
+    return el && el.checked;
+  });
+  lista.push({id, label, clave, permisos});
+  usuariosConfig = lista;
+  saveUsuariosLocal();
+  await saveUsuariosSupabase();
+  renderLoginBotones();
+  renderUsuarios();
+  alert('✅ Usuario creado correctamente.');
+}
+
+function renderAll(){
+  if(tabActiva==='chepito1') renderEntrada('chepito1','viewChepito1');
+  if(tabActiva==='chepito2') renderEntrada('chepito2','viewChepito2');
+  if(tabActiva==='consolidado') renderConsolidado();
+  if(tabActiva==='receta') renderReceta();
+  if(tabActiva==='productos') renderProductos();
+  if(tabActiva==='historial') renderHistorial();
+  if(tabActiva==='usuarios') renderUsuarios();
+  document.getElementById('btnExportar').style.display =
+    ['chepito1','chepito2'].includes(tabActiva) ? 'inline-block' : 'none';
+  document.getElementById('btnImprimir').style.display =
+    ['consolidado','receta','historial'].includes(tabActiva) ? 'inline-block' : 'none';
+  const etiquetaDia = fechaActual===hoyISO() ? ' (HOY)' : (fechaActual===mananaISO() ? ' (MAÑANA — se ingresa de noche)' : '');
+  document.getElementById('headerSub').textContent =
+    new Date(fechaActual+'T12:00:00').toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + etiquetaDia;
+}
+
+document.getElementById('navTabs').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-tab]');
+  if(!btn) return;
+  tabActiva = btn.dataset.tab;
+  document.querySelectorAll('#navTabs button').forEach(b=>b.classList.toggle('active', b===btn));
+  ['chepito1','chepito2','consolidado','receta','productos','historial','usuarios'].forEach(t=>{
+    document.getElementById('view'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = (t===tabActiva)?'block':'none';
+  });
+  renderAll();
 });
-function nav(delta){
-  if(mode==='dia') selDate=addDays(selDate, delta);
-  else if(mode==='semana') selDate=addDays(selDate, delta*7);
-  else { selMonth+=delta; if(selMonth<0){selMonth=11;curYear--;} if(selMonth>11){selMonth=0;curYear++;} }
-  ensureData();
+
+document.getElementById('buscador').addEventListener('input', e=>{
+  filtro = e.target.value;
+  renderAll();
+});
+
+document.getElementById('fechaSel').addEventListener('change', async e=>{
+  const nuevaFecha = e.target.value;
+  if(!esAdmin()){
+    const pendiente = proximaFechaPendiente();
+    if(nuevaFecha !== pendiente && nuevaFecha >= hoyISO()){
+      const esPasado = nuevaFecha < pendiente;
+      const msg = esPasado
+        ? `⚠️ Seleccionaste ${formatFechaLarga(nuevaFecha)}, que ya pasó.\n\nLa producción que falta ingresar es la del ${formatFechaLarga(pendiente)}.\n\n¿Querés ir a esa fecha?`
+        : `⚠️ Seleccionaste ${formatFechaLarga(nuevaFecha)}, pero la producción del ${formatFechaLarga(pendiente)} todavía no está ingresada.\n\n¿Querés ir al ${formatFechaLarga(pendiente)} primero?`;
+      if(confirm(msg)){
+        await irAFecha(pendiente);
+        return;
+      }
+    }
+  }
+  await irAFecha(nuevaFecha);
+});
+
+/* ====================== INIT ====================== */
+/* ====================== TIEMPO REAL: cambios se ven al instante en todas las compus ====================== */
+function iniciarTiempoReal(){
+  if(!useSupabase) return;
+
+  supa.channel('cambios-produccion')
+    .on('postgres_changes', {event:'*', schema:'public', table:'produccion'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r || r.fecha !== fechaActual) return; // solo nos importa si es del día que estamos viendo
+      if(payload.eventType === 'DELETE'){
+        if(datos[r.fecha] && datos[r.fecha][r.sucursal]) delete datos[r.fecha][r.sucursal][r.fila];
+      } else {
+        getDatos(r.fecha, r.sucursal)[r.fila] = r.cantidad;
+      }
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'confirmaciones'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      // Se registran TODAS las fechas (no solo la que se está viendo): una confirmación
+      // de la fecha pendiente puede desbloquear la del día siguiente en pantalla.
+      if(!r) return;
+      if(!confirmaciones[r.fecha]) confirmaciones[r.fecha] = {};
+      confirmaciones[r.fecha][r.sucursal] = {confirmado:r.confirmado, hora:r.hora};
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'impresos'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r || r.fecha !== fechaActual) return;
+      impresos[r.fecha] = {impreso:r.impreso, hora:r.hora};
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'historial_produccion'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      if(payload.eventType === 'DELETE'){ delete historial[r.fecha]; }
+      else { historial[r.fecha] = {...r.snapshot, guardadoEn:r.guardado_en}; }
+      if(tabActiva==='historial' || r.fecha === fechaActual) renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'codigos_sucursal'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      if(!codigosSucursal[r.sucursal]) codigosSucursal[r.sucursal] = {};
+      codigosSucursal[r.sucursal][r.fila] = r.codigo;
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'catalogo_overrides'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      overrides[r.fila] = {nombre:r.nombre, codigo:r.codigo, familia:r.familia, peso:r.peso, activo:r.activo};
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'lotes_compartidos'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      lotesCompartidos[r.fila] = r.lote;
+      renderAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'solicitudes_lote'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      if(payload.eventType === 'DELETE'){
+        if(solicitudesLote[r.fecha]) delete solicitudesLote[r.fecha][r.fila];
+      } else {
+        if(!solicitudesLote[r.fecha]) solicitudesLote[r.fecha] = {};
+        solicitudesLote[r.fecha][r.fila] = {de:r.de_sucursal, estado:r.estado, hora:r.hora, horaRespuesta:r.hora_respuesta};
+      }
+      saveSolicitudesLocal();
+      renderAll();
+    })
+    .subscribe();
 }
-if($('g_prev'))   $('g_prev').onclick   = ()=>nav(-1);
-if($('g_next'))   $('g_next').onclick   = ()=>nav(1);
-if($('g_date'))   $('g_date').onchange  = e=>{ if(e.target.value){ selDate=e.target.value; ensureData(); } };
-if($('g_reload')) $('g_reload').onclick = ()=>ensureData(true);
-if($('g_export')) $('g_export').onclick = exportCSV;
 
-/* ---------------- arranque: Admin abre en Gasto; sucursales en Producción ---------------- */
-aplicarAcceso();
-showMain( esRolAdmin(rolLogueado()) ? 'gasto' : 'produccion' );
-
-})();
-
+async function init(){
+  document.getElementById('fechaSel').value = fechaActual;
+  const rolGuardado = localStorage.getItem('chepito_rol');
+  if(rolGuardado && getUsuario(rolGuardado)){
+    rolActual = rolGuardado;
+    document.getElementById('loginOverlay').style.display = 'none';
+  }
+  if(!useSupabase){
+    document.getElementById('configWarning').style.display = 'block';
+    document.getElementById('connStatus').textContent = 'modo local (sin compartir)';
+  } else {
+    document.getElementById('connStatus').textContent = 'conectado a Supabase';
+  }
+  loadUsuariosLocal();
+  if(useSupabase) await loadUsuariosSupabase();
+  renderLoginBotones();
+  loadOverridesLocal();
+  if(useSupabase) await loadOverridesSupabase();
+  loadCodigosLocal();
+  if(useSupabase) await loadCodigosSupabase();
+  loadConfirmacionesLocal();
+  loadHistorialLocal();
+  if(useSupabase){
+    await loadConfirmacionesSupabase(hoyISO());
+    await loadConfirmacionesSupabase(mananaISO());
+    await loadHistorialSupabase();
+  }
+  // Arrancar en la fecha que toca ingresar: si la de HOY todavía no tiene las dos
+  // confirmaciones, se abre en hoy; si ya está lista, en la próxima pendiente (mañana).
+  fechaActual = proximaFechaPendiente();
+  document.getElementById('fechaSel').value = fechaActual;
+  if(useSupabase) await loadConfirmacionesSupabase(fechaActual);
+  loadImpresosLocal();
+  if(useSupabase) await loadImpresosSupabase(fechaActual);
+  loadSolicitudesLocal();
+  if(useSupabase) await loadSolicitudesSupabase(fechaActual);
+  loadLotesLocal();
+  if(useSupabase) await loadLotesSupabase();
+  loadLocal(fechaActual);
+  if(useSupabase) await loadFromSupabase(fechaActual);
+  await aplicarPlantillaBaguetteSiVacio();
+  if(rolActual){ aplicarPermisosRol(); } else { renderAll(); }
+  iniciarTiempoReal();
+  checkAutoBloqueo();
+  programarAutoBloqueo();
+}
+init();
 </script>
 </body>
 </html>
