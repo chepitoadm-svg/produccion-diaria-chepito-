@@ -240,6 +240,18 @@
    alter table lotes_compartidos enable row level security;
    create policy "acceso publico" on lotes_compartidos for all using (true) with check (true);
 
+   create table solicitudes_lote (
+     fecha date not null,
+     fila int not null,
+     de_sucursal text not null,
+     estado text default 'pendiente',
+     hora text,
+     hora_respuesta text,
+     primary key (fecha, fila)
+   );
+   alter table solicitudes_lote enable row level security;
+   create policy "acceso publico" on solicitudes_lote for all using (true) with check (true);
+
    create table config (
      clave text primary key,
      valor jsonb,
@@ -257,6 +269,7 @@
    alter publication supabase_realtime add table codigos_sucursal;
    alter publication supabase_realtime add table catalogo_overrides;
    alter publication supabase_realtime add table lotes_compartidos;
+   alter publication supabase_realtime add table solicitudes_lote;
 
    3. En Settings > API, copiá tu "Project URL" y tu "anon public key"
       y pegalos abajo.
@@ -368,6 +381,115 @@ async function cambiarLote(fila, lote){
     const {error} = await supa.from('lotes_compartidos').upsert({fila, lote:Number(lote)||0}, {onConflict:'fila'});
     if(error) console.error(error);
   }
+  renderAll();
+}
+
+/* ====================== SOLICITUDES DE MOLDE COMPARTIDO ======================
+   Cuando una sucursal pone una cantidad que no completa el molde (ej: 4 de un molde
+   de 8), se le manda una SOLICITUD a la otra sucursal para que ponga lo que falta.
+   La otra la puede ACEPTAR (se le suma lo que falta automáticamente) o RECHAZAR.
+   Mientras haya una solicitud sin contestar, NINGUNA de las dos puede confirmar el día.
+   solicitudesLote[fecha][fila] = {de, estado:'pendiente'|'rechazada', hora, horaRespuesta}
+============================================================================== */
+let solicitudesLote = {};
+function getSolicitudes(fecha){ return solicitudesLote[fecha] || {}; }
+function loadSolicitudesLocal(){
+  try{ const r=localStorage.getItem('chepito_solicitudes_lote'); if(r) solicitudesLote=JSON.parse(r); }catch(e){}
+}
+function saveSolicitudesLocal(){
+  try{ localStorage.setItem('chepito_solicitudes_lote', JSON.stringify(solicitudesLote)); }catch(e){}
+}
+async function loadSolicitudesSupabase(fecha){
+  if(!useSupabase) return;
+  const {data, error} = await supa.from('solicitudes_lote').select('*').eq('fecha', fecha);
+  if(error){ console.error(error); return; }
+  solicitudesLote[fecha] = {};
+  (data||[]).forEach(r=>{ solicitudesLote[fecha][r.fila] = {de:r.de_sucursal, estado:r.estado, hora:r.hora, horaRespuesta:r.hora_respuesta}; });
+  saveSolicitudesLocal();
+}
+async function upsertSolicitud(fecha, fila, s){
+  if(!solicitudesLote[fecha]) solicitudesLote[fecha] = {};
+  solicitudesLote[fecha][fila] = s;
+  saveSolicitudesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('solicitudes_lote').upsert(
+      {fecha, fila, de_sucursal:s.de, estado:s.estado, hora:s.hora, hora_respuesta:s.horaRespuesta||null}, {onConflict:'fecha,fila'});
+    if(error) console.error(error);
+  }
+}
+async function borrarSolicitud(fecha, fila){
+  if(solicitudesLote[fecha]) delete solicitudesLote[fecha][fila];
+  saveSolicitudesLocal();
+  if(useSupabase){
+    const {error} = await supa.from('solicitudes_lote').delete().eq('fecha', fecha).eq('fila', fila);
+    if(error) console.error(error);
+  }
+}
+function nombreProducto(fila){
+  return cap((allCatalogRows().find(c=>c.fila===fila)||{}).nombre || ('producto #'+fila));
+}
+// Mantiene la solicitud al día después de cada cambio de cantidad.
+// Devuelve true si se creó (o reactivó) una solicitud nueva de parte de `sucursal`.
+async function sincronizarSolicitudLote(fecha, fila, sucursal){
+  const lote = lotesCompartidos[fila] || 0;
+  if(!lote) return false;
+  const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+  const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+  const total = v1+v2;
+  const sol = getSolicitudes(fecha)[fila];
+  if(total<=0 || total % lote === 0){
+    if(sol) await borrarSolicitud(fecha, fila); // cuadró: la solicitud queda resuelta
+    return false;
+  }
+  if(!sol || sol.estado==='rechazada'){
+    const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+    await upsertSolicitud(fecha, fila, {de:sucursal, estado:'pendiente', hora});
+    return true;
+  }
+  return false; // ya hay una pendiente: se deja igual (los montos se calculan en vivo)
+}
+// Solicitudes sin contestar de un día — bloquean la confirmación de las DOS sucursales
+function solicitudesPendientes(fecha){
+  const out = [];
+  const sols = getSolicitudes(fecha);
+  Object.keys(sols).forEach(filaStr=>{
+    const sol = sols[filaStr];
+    if(sol.estado!=='pendiente') return;
+    const fila = Number(filaStr);
+    const lote = lotesCompartidos[fila] || 0;
+    const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+    const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+    const total = v1+v2;
+    if(!lote || total<=0 || total % lote === 0) return; // ya quedó resuelta
+    const de = sol.de==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+    out.push(`${nombreProducto(fila)}: solicitud de ${de} sin contestar`);
+  });
+  return out;
+}
+async function aceptarSolicitud(fila, sucursal){
+  const lote = lotesCompartidos[fila] || 0;
+  const sol = getSolicitudes(fechaActual)[fila];
+  if(!sol || !lote) return;
+  const v1 = getDatos(fechaActual,'chepito1')[fila] || 0;
+  const v2 = getDatos(fechaActual,'chepito2')[fila] || 0;
+  const total = v1+v2;
+  if(total<=0 || total % lote === 0){ await borrarSolicitud(fechaActual, fila); renderAll(); return; }
+  const falta = Math.ceil(total/lote)*lote - total;
+  const mia = getDatos(fechaActual, sucursal)[fila] || 0;
+  if(!confirm(`¿Aceptás poner ${falta} más de "${nombreProducto(fila)}" para completar el molde de ${lote}?\n\nTu cantidad quedaría en ${mia+falta}.`)) return;
+  await guardarCelda(fechaActual, sucursal, fila, mia+falta, null); // al cuadrar, la solicitud se borra sola
+}
+async function rechazarSolicitud(fila, sucursal){
+  const sol = getSolicitudes(fechaActual)[fila];
+  if(!sol) return;
+  const deEtiqueta = sol.de==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  if(!confirm(`¿Rechazar la solicitud de ${deEtiqueta} por "${nombreProducto(fila)}"?\n\n${deEtiqueta} va a ver que la rechazaste y tendrá que ajustar su cantidad. Mientras no cuadre, el producto no sale en la programación.`)) return;
+  const hora = new Date().toLocaleString('es-CR',{dateStyle:'short',timeStyle:'short'});
+  await upsertSolicitud(fechaActual, fila, {...sol, estado:'rechazada', horaRespuesta:hora});
+  renderAll();
+}
+async function descartarSolicitud(fila){
+  await borrarSolicitud(fechaActual, fila);
   renderAll();
 }
 
@@ -620,12 +742,14 @@ function fechaYaConfirmada(fecha){
   return !!(historial[fecha] && historial[fecha].guardadoEn);
 }
 function proximaFechaPendiente(){
-  // Retorna la fecha más próxima (desde mañana) que aún no tiene ambas confirmaciones
+  // Retorna la fecha más próxima (empezando por HOY) que aún no tiene ambas confirmaciones.
+  // Si la producción de hoy todavía no está ingresada/confirmada por las dos sucursales,
+  // la que toca es la de HOY; apenas las dos confirman, pasa a la del día siguiente.
   const d = new Date(hoyISO()+'T12:00:00');
-  for(let i=0; i<14; i++){
-    d.setDate(d.getDate()+1);
+  for(let i=0; i<15; i++){
     const f = fechaISO(d);
     if(!fechaYaConfirmada(f)) return f;
+    d.setDate(d.getDate()+1);
   }
   return mananaISO();
 }
@@ -633,8 +757,25 @@ function formatFechaLarga(fechaStr){
   return new Date(fechaStr+'T12:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
 }
 
-// Por defecto se abre en el día de MAÑANA, porque las dependientes ingresan
-// de noche la producción que se va a hacer al día siguiente.
+// Cambia la app a otra fecha: actualiza el selector y carga los datos de ese día
+async function irAFecha(fecha){
+  fechaActual = fecha;
+  const sel = document.getElementById('fechaSel');
+  if(sel) sel.value = fecha;
+  loadLocal(fechaActual);
+  if(useSupabase){
+    await loadFromSupabase(fechaActual);
+    await loadConfirmacionesSupabase(fechaActual);
+    await loadImpresosSupabase(fechaActual);
+    await loadSolicitudesSupabase(fechaActual);
+  }
+  renderAll();
+}
+
+// La app arranca en la fecha PENDIENTE de ingresar (ver proximaFechaPendiente):
+// normalmente mañana (porque se ingresa de noche la producción del día siguiente),
+// pero si la de hoy todavía no está confirmada por las dos sucursales, arranca en hoy.
+// Este valor inicial es provisional: init() lo recalcula cuando ya cargaron los datos.
 let fechaActual = mananaISO();
 let tabActiva = 'chepito1';
 let filtro = '';
@@ -679,6 +820,15 @@ async function setConfirmacion(fecha, sucursal, confirmado){
   const c2 = confirmaciones[fecha] && confirmaciones[fecha]['chepito2'];
   if(c1 && c1.confirmado && c2 && c2.confirmado){
     await guardarHistorial(fecha);
+    // Esta fecha ya quedó completa: pasar automáticamente a la próxima pendiente
+    if(confirmado && fecha === fechaActual){
+      const siguiente = proximaFechaPendiente();
+      if(siguiente !== fechaActual){
+        alert(`✅ ¡Listo! Las dos sucursales ya confirmaron la producción del ${formatFechaLarga(fecha)}.\n\nAhora sigue ingresar la del ${formatFechaLarga(siguiente)}.`);
+        await irAFecha(siguiente);
+        return;
+      }
+    }
   }
   renderAll();
 }
@@ -889,6 +1039,15 @@ function loteProblemas(fecha){
 
 function onConfirmarProduccion(sucursal){
   const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  if(!esAdmin() && fechaActual > proximaFechaPendiente()){
+    alert(`🚫 Hay que seguir el orden: primero se ingresa y confirma la producción del ${formatFechaLarga(proximaFechaPendiente())}.`);
+    return;
+  }
+  const sinContestar = solicitudesPendientes(fechaActual);
+  if(sinContestar.length){
+    alert('🚫 No se puede confirmar todavía.\n\nHay solicitudes de molde compartido SIN CONTESTAR entre las panaderías:\n\n' + sinContestar.join('\n') + '\n\nHay que aceptarlas, rechazarlas o cancelarlas antes de poder confirmar la producción del día.');
+    return;
+  }
   const problemas = loteProblemas(fechaActual);
   if(problemas.length){
     if(!confirm('⚠️ Hay productos de molde compartido que NO cuadran entre Chepito 1 y Chepito 2:\n\n' + problemas.join('\n') + '\n\nEsos productos NO van a salir en la programación (consolidado, receta ni TXT) mientras no cuadren.\n\n¿Querés confirmar igual y dejarlos fuera? (Cancelar = volver a corregir)')) return;
@@ -1077,24 +1236,34 @@ async function loadFromSupabase(fecha){
 }
 
 async function guardarCelda(fecha, sucursal, fila, cantidad, inputEl){
-  // Producto de molde compartido: SIEMPRE se guarda (cada sucursal pone su parte,
-  // ej: molde de 8 = 4 y 4). Si las DOS ya pusieron cantidad y el total no es
-  // múltiplo del molde, se avisa — y mientras no cuadre, ese producto NO sale
-  // en la programación (consolidado, receta ni TXT).
-  const lote = lotesCompartidos[fila] || 0;
-  if(lote>0 && cantidad>0){
-    const otraSucursal = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
-    const etiquetaOtra = otraSucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
-    const otraVal = getDatos(fecha, otraSucursal)[fila] || 0;
-    const total = cantidad + otraVal;
-    const nombreProd = (allCatalogRows().find(c=>c.fila===fila)||{}).nombre || 'este producto';
-    if(otraVal>0 && total % lote !== 0){
-      alert(`⚠️ OJO — molde compartido\n\n"${cap(nombreProd)}" sale en moldes de ${lote}.\n\nPusiste ${cantidad} y ${etiquetaOtra} tiene ${otraVal} → entre las dos suman ${total}, que NO es múltiplo de ${lote}.\n\nSe guardó igual, pero mientras no cuadre este producto NO va a salir en la programación (consolidado, receta ni TXT).\n\nCoordiná con ${etiquetaOtra} para que el total dé ${Math.ceil(total/lote)*lote} o ${Math.max(0,Math.floor(total/lote)*lote)}.`);
-    }
+  // Orden consecutivo: no se puede guardar en una fecha posterior mientras haya
+  // una anterior pendiente de confirmar por las dos sucursales.
+  if(!esAdmin() && fecha > proximaFechaPendiente()){
+    alert(`🚫 Hay que seguir el orden: primero se ingresa y confirma la producción del ${formatFechaLarga(proximaFechaPendiente())}. Hasta entonces no se puede llenar la del ${formatFechaLarga(fecha)}.`);
+    if(inputEl) inputEl.value = getDatos(fecha, sucursal)[fila] || '';
+    return false;
   }
-
   getDatos(fecha, sucursal)[fila] = cantidad;
   saveLocal(fecha);
+
+  // Producto de molde compartido: SIEMPRE se guarda (cada sucursal pone su parte,
+  // ej: molde de 8 = 4 y 4). Si el total no cuadra con el molde, se le manda una
+  // SOLICITUD a la otra sucursal para que complete lo que falta (ella la acepta o
+  // la rechaza). Mientras esté sin contestar no se puede confirmar el día, y
+  // mientras no cuadre, el producto NO sale en la programación.
+  const lote = lotesCompartidos[fila] || 0;
+  if(lote>0){
+    const nuevaSolicitud = await sincronizarSolicitudLote(fecha, fila, sucursal);
+    if(nuevaSolicitud){
+      const otraSucursal = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+      const etiquetaOtra = otraSucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+      const v1 = getDatos(fecha,'chepito1')[fila] || 0;
+      const v2 = getDatos(fecha,'chepito2')[fila] || 0;
+      const total = v1+v2;
+      const falta = Math.ceil(total/lote)*lote - total;
+      alert(`📨 Solicitud enviada a ${etiquetaOtra}\n\n"${nombreProducto(fila)}" sale en moldes de ${lote} y entre las dos sucursales van ${total}.\n\nSe le mandó una solicitud a ${etiquetaOtra} para que ponga ${falta} más y completar el molde. Le va a aparecer para ACEPTARLA o RECHAZARLA.\n\nMientras esté sin contestar, ninguna de las dos puede confirmar la producción del día — y mientras no cuadre, este producto no sale en la programación.`);
+    }
+  }
 
   // Si ya se había impreso este día, avisar que hay que reimprimir
   if(impresos[fecha] && impresos[fecha].impreso){
@@ -1120,7 +1289,8 @@ async function guardarCeldaYAvanzar(fecha, sucursal, fila, cantidad, inputEl){
   const container = inputEl.closest('.view');
   const inputsAntes = container ? Array.from(container.querySelectorAll('input[type=number]')) : [];
   const idx = inputsAntes.indexOf(inputEl);
-  await guardarCelda(fecha, sucursal, fila, cantidad, inputEl);
+  const resultado = await guardarCelda(fecha, sucursal, fila, cantidad, inputEl);
+  if(resultado===false) return; // rechazado (fecha fuera de orden) — no avanza
   if(container && idx>-1){
     const inputsDespues = Array.from(container.querySelectorAll('input[type=number]'));
     let siguiente = idx+1;
@@ -1182,9 +1352,18 @@ function renderEntrada(sucursal, containerId){
   const etiqueta = sucursal==='chepito1' ? 'Chepito 1' : 'Chepito 2';
   const conf = confirmaciones[fechaActual] && confirmaciones[fechaActual][sucursal];
   const bloqueado = !!(conf && conf.confirmado);
+  // Orden consecutivo: si hay una fecha anterior pendiente (ej: la de hoy sin confirmar),
+  // las fechas posteriores quedan bloqueadas hasta que la pendiente la confirmen las dos.
+  const pendiente = proximaFechaPendiente();
+  const fueraDeOrden = !esAdmin() && fechaActual > pendiente;
   let html = '';
 
-  if(bloqueado){
+  if(fueraDeOrden){
+    html += `<div class="banner-pendiente">
+      🚫 <strong>Fecha bloqueada — hay que seguir el orden:</strong> primero se ingresa y confirma la producción del <strong>${formatFechaLarga(pendiente)}</strong>. Mientras tanto no se puede llenar la del ${formatFechaLarga(fechaActual)}.
+      <button onclick="irAFecha('${pendiente}')">📅 Ir al ${formatFechaLarga(pendiente)}</button>
+    </div>`;
+  } else if(bloqueado){
     const adminLocked = !!(historial[fechaActual] && historial[fechaActual].bloqueadoPorAdmin);
     html += `<div class="banner-confirmado">
       ✅ <strong>${etiqueta} confirmó</strong> la producción del ${formatFechaLarga(fechaActual)} (${conf.hora}). Los campos están bloqueados.
@@ -1199,14 +1378,41 @@ function renderEntrada(sucursal, containerId){
     </div>`;
   }
 
-  if(!esAdmin()){
-    const pendiente = proximaFechaPendiente();
-    if(fechaActual !== pendiente && fechaActual >= hoyISO()){
-      html += `<div style="background:#fdecea;border:2px solid #e74c3c;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:#8a2c22;font-weight:600;">
-        🚨 <strong>Fecha incorrecta:</strong> La producción del <strong>${formatFechaLarga(pendiente)}</strong> todavía no está ingresada. Cambiá la fecha arriba.
+  // Notificaciones de solicitudes de molde compartido entre panaderías
+  const otraSuc = sucursal==='chepito1' ? 'chepito2' : 'chepito1';
+  const etiquetaOtraSuc = otraSuc==='chepito1' ? 'Chepito 1' : 'Chepito 2';
+  const sols = getSolicitudes(fechaActual);
+  Object.keys(sols).forEach(filaStr=>{
+    const fila = Number(filaStr);
+    const sol = sols[filaStr];
+    const loteSol = lotesCompartidos[fila] || 0;
+    if(!loteSol) return;
+    const v1 = getDatos(fechaActual,'chepito1')[fila] || 0;
+    const v2 = getDatos(fechaActual,'chepito2')[fila] || 0;
+    const totalSol = v1+v2;
+    if(totalSol<=0 || totalSol % loteSol === 0) return; // ya quedó resuelta
+    const falta = Math.ceil(totalSol/loteSol)*loteSol - totalSol;
+    const vOtra = sucursal==='chepito1' ? v2 : v1;
+    if(sol.estado==='pendiente' && sol.de!==sucursal){
+      html += `<div class="banner-pendiente">
+        🔔 <strong>Solicitud de ${etiquetaOtraSuc}:</strong> puso ${vOtra} de <strong>${nombreProducto(fila)}</strong> (molde de ${loteSol}) y te pide poner <strong>${falta}</strong> para completar ${totalSol+falta}.
+        <span style="display:inline-flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="aceptarSolicitud(${fila},'${sucursal}')" style="background:var(--accent2);">✅ Aceptar (poner ${falta})</button>
+          <button onclick="rechazarSolicitud(${fila},'${sucursal}')">❌ Rechazar</button>
+        </span>
+      </div>`;
+    } else if(sol.estado==='pendiente' && sol.de===sucursal){
+      html += `<div class="banner-pendiente" style="background:#fff8e8;border-color:#ffe08a;color:#8a6d3b;">
+        📨 <strong>Esperando respuesta de ${etiquetaOtraSuc}:</strong> le pediste completar <strong>${nombreProducto(fila)}</strong> (faltan ${falta} para el molde de ${loteSol}). Nadie puede confirmar el día hasta que conteste.
+        <button onclick="descartarSolicitud(${fila})" style="background:#8a6d3b;">🗑️ Cancelar solicitud</button>
+      </div>`;
+    } else if(sol.estado==='rechazada' && sol.de===sucursal){
+      html += `<div class="banner-pendiente">
+        ❌ <strong>${etiquetaOtraSuc} rechazó</strong> tu solicitud de <strong>${nombreProducto(fila)}</strong>${sol.horaRespuesta?` (${sol.horaRespuesta})`:''}. Ajustá tu cantidad para que cuadre el molde de ${loteSol}; si lo dejás así, queda fuera de la programación.
+        <button onclick="descartarSolicitud(${fila})">OK, entendido</button>
       </div>`;
     }
-  }
+  });
 
   GRUPOS.forEach(g=>{
     const items = catalogo.filter(c=>{
@@ -1222,7 +1428,7 @@ function renderEntrada(sucursal, containerId){
       const codigoActual = codigoDe(c.fila, sucursal);
       const sinCodigo = !codigoActual;
       const esProductoBloqueado = PRODUCTOS_CANTIDAD_BLOQUEADA.includes(c.fila) && !esAdmin();
-      const dis = (bloqueado || esProductoBloqueado) ? 'disabled' : '';
+      const dis = (bloqueado || esProductoBloqueado || fueraDeOrden) ? 'disabled' : '';
       const tituloBloqueo = esProductoBloqueado ? 'Solo Admin puede cambiar esta cantidad' : '';
 
       const lote = lotesCompartidos[c.fila] || 0;
@@ -2071,27 +2277,12 @@ document.getElementById('fechaSel').addEventListener('change', async e=>{
         ? `⚠️ Seleccionaste ${formatFechaLarga(nuevaFecha)}, que ya pasó.\n\nLa producción que falta ingresar es la del ${formatFechaLarga(pendiente)}.\n\n¿Querés ir a esa fecha?`
         : `⚠️ Seleccionaste ${formatFechaLarga(nuevaFecha)}, pero la producción del ${formatFechaLarga(pendiente)} todavía no está ingresada.\n\n¿Querés ir al ${formatFechaLarga(pendiente)} primero?`;
       if(confirm(msg)){
-        e.target.value = pendiente;
-        fechaActual = pendiente;
-        loadLocal(fechaActual);
-        if(useSupabase){
-          await loadFromSupabase(fechaActual);
-          await loadConfirmacionesSupabase(fechaActual);
-          await loadImpresosSupabase(fechaActual);
-        }
-        renderAll();
+        await irAFecha(pendiente);
         return;
       }
     }
   }
-  fechaActual = nuevaFecha;
-  loadLocal(fechaActual);
-  if(useSupabase){
-    await loadFromSupabase(fechaActual);
-    await loadConfirmacionesSupabase(fechaActual);
-    await loadImpresosSupabase(fechaActual);
-  }
-  renderAll();
+  await irAFecha(nuevaFecha);
 });
 
 /* ====================== INIT ====================== */
@@ -2112,7 +2303,9 @@ function iniciarTiempoReal(){
     })
     .on('postgres_changes', {event:'*', schema:'public', table:'confirmaciones'}, payload => {
       const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
-      if(!r || r.fecha !== fechaActual) return;
+      // Se registran TODAS las fechas (no solo la que se está viendo): una confirmación
+      // de la fecha pendiente puede desbloquear la del día siguiente en pantalla.
+      if(!r) return;
       if(!confirmaciones[r.fecha]) confirmaciones[r.fecha] = {};
       confirmaciones[r.fecha][r.sucursal] = {confirmado:r.confirmado, hora:r.hora};
       renderAll();
@@ -2149,6 +2342,18 @@ function iniciarTiempoReal(){
       lotesCompartidos[r.fila] = r.lote;
       renderAll();
     })
+    .on('postgres_changes', {event:'*', schema:'public', table:'solicitudes_lote'}, payload => {
+      const r = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+      if(!r) return;
+      if(payload.eventType === 'DELETE'){
+        if(solicitudesLote[r.fecha]) delete solicitudesLote[r.fecha][r.fila];
+      } else {
+        if(!solicitudesLote[r.fecha]) solicitudesLote[r.fecha] = {};
+        solicitudesLote[r.fecha][r.fila] = {de:r.de_sucursal, estado:r.estado, hora:r.hora, horaRespuesta:r.hora_respuesta};
+      }
+      saveSolicitudesLocal();
+      renderAll();
+    })
     .subscribe();
 }
 
@@ -2173,14 +2378,21 @@ async function init(){
   loadCodigosLocal();
   if(useSupabase) await loadCodigosSupabase();
   loadConfirmacionesLocal();
+  loadHistorialLocal();
   if(useSupabase){
-    await loadConfirmacionesSupabase(fechaActual);
-    if(mananaISO() !== fechaActual) await loadConfirmacionesSupabase(mananaISO());
+    await loadConfirmacionesSupabase(hoyISO());
+    await loadConfirmacionesSupabase(mananaISO());
+    await loadHistorialSupabase();
   }
+  // Arrancar en la fecha que toca ingresar: si la de HOY todavía no tiene las dos
+  // confirmaciones, se abre en hoy; si ya está lista, en la próxima pendiente (mañana).
+  fechaActual = proximaFechaPendiente();
+  document.getElementById('fechaSel').value = fechaActual;
+  if(useSupabase) await loadConfirmacionesSupabase(fechaActual);
   loadImpresosLocal();
   if(useSupabase) await loadImpresosSupabase(fechaActual);
-  loadHistorialLocal();
-  if(useSupabase) await loadHistorialSupabase();
+  loadSolicitudesLocal();
+  if(useSupabase) await loadSolicitudesSupabase(fechaActual);
   loadLotesLocal();
   if(useSupabase) await loadLotesSupabase();
   loadLocal(fechaActual);
