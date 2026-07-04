@@ -183,6 +183,19 @@ body{padding:0 !important;}
 .gt tr.pend td{color:var(--ink-soft)}
 .gt select,.gt input[type=number]{font:inherit;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;color:var(--ink);max-width:100%}
 .bignum{font-size:32px;font-weight:800;letter-spacing:-.02em;color:var(--accent);line-height:1.1}
+/* cajitas de gasto por panadería (Chepito 1 / Chepito 2 / las dos) */
+.sucres{display:flex;gap:10px;flex-wrap:wrap;margin:2px 0 6px}
+.sucbox{flex:1 1 150px;min-width:140px;border:2px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;background:var(--surface-2)}
+.sucbox:hover{border-color:var(--accent)}
+.sucbox.on{border-color:var(--accent);background:var(--accent-soft)}
+.sucbox .t{font-size:11.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em}
+.sucbox .v{font-size:20px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.sucbox .u{font-size:12px;color:var(--ink-soft)}
+/* desplegable: en qué productos se gastó cada materia prima */
+.flecha{color:var(--ink-soft);font-size:11px;display:inline-block;width:13px}
+.gt tr.matdet>td{background:var(--surface-2);padding:10px 14px 14px}
+.gt table.gtin{font-size:12.5px}
+.gt table.gtin th,.gt table.gtin td{padding:5px 8px}
 .pend{color:var(--bad)}
 details.card > summary{cursor:pointer;font-weight:700;font-size:15px;list-style:none}
 details.card > summary::-webkit-details-marker{display:none}
@@ -1392,6 +1405,8 @@ function costOfUnits(unitsByFila){
 
 /* ---------------- estado del período ---------------- */
 let mode='dia';                 // 'dia' | 'semana' | 'mes' — abre en el día de hoy
+let sucSel='';                  // '' = las dos panaderías | 'chepito1' | 'chepito2'
+const sucLabel = s => s==='chepito1' ? 'Chepito 1' : s==='chepito2' ? 'Chepito 2' : 'las dos panaderías';
 let selDate=todayISO();         // ancla para día / semana
 let curYear=new Date().getFullYear();
 let selMonth=new Date().getMonth();
@@ -1406,10 +1421,11 @@ function periodo(){
 }
 const _dowCache={};
 function dowOf(iso){ let d=_dowCache[iso]; if(d===undefined){ d=parseISO(iso).getDay(); _dowCache[iso]=d; } return d; } // 0=domingo · 6=sábado
-function unitsInRange(ini, fin){
+function unitsInRange(ini, fin, suc){
   const vi=variantPorFila();
   const u={}; let tot=0;
   yearRows.forEach(r=>{
+    if(suc && r.sucursal!==suc) return;
     const f=String(r.fecha).slice(0,10);
     if(f<ini || f>fin) return;
     const q=Number(r.cantidad)||0; if(!q) return;
@@ -1479,17 +1495,40 @@ function sinRecetaHtml(list){
     Se produjeron pero no tienen receta en Costos, así que no suman materia prima. Definí su receta en Costos o vinculalos en «⚙️ Vínculos» abajo.</div>`;
 }
 
+function sucBox(key,label,total,units){
+  return `<div class="sucbox${sucSel===key?' on':''}" data-suc="${key}">
+    <div class="t">${label}</div>
+    <div class="v">${money0(total)}</div>
+    <div class="u">${nfmt(units,0)} unidades</div></div>`;
+}
+function wireSucBoxes(el){
+  el.querySelectorAll('.sucbox').forEach(b=>b.onclick=()=>{ sucSel=b.dataset.suc; render(); });
+}
 function renderDetail(){
   const el=$('g_monthDetail'), ttl=$('g_monthTitle'); if(!el) return;
   const per=periodo();
   if(ttl) ttl.textContent=per.label;
   if(cargando){ el.innerHTML='<div class="hint">Cargando…</div>'; return; }
-  const {u,tot}=unitsInRange(per.ini, per.fin);
-  if(tot<=0){ el.innerHTML='<div class="hint">No hay producción registrada en '+artTipo(per.tipo)+'.</div>'; return; }
-  const {total, materias, sinReceta, perProduct}=costOfUnits(u);
+  const all=unitsInRange(per.ini, per.fin);
+  if(all.tot<=0){ el.innerHTML='<div class="hint">No hay producción registrada en '+artTipo(per.tipo)+'.</div>'; return; }
+  const s1=unitsInRange(per.ini, per.fin, 'chepito1');
+  const s2=unitsInRange(per.ini, per.fin, 'chepito2');
+  const cAll=costOfUnits(all.u), c1=costOfUnits(s1.u), c2=costOfUnits(s2.u);
+  const strip=`<div class="sucres">
+      ${sucBox('chepito1','🏠 Chepito 1', c1.total, s1.tot)}
+      ${sucBox('chepito2','🏠 Chepito 2', c2.total, s2.tot)}
+      ${sucBox('','Σ Las dos juntas', cAll.total, all.tot)}
+    </div>
+    <div class="hint" style="margin:0 0 14px">Tocá una cajita para que las tablas de abajo muestren solo esa panadería.</div>`;
+  const tot = sucSel==='chepito1' ? s1.tot : sucSel==='chepito2' ? s2.tot : all.tot;
+  const {total, materias, sinReceta, perProduct} = sucSel==='chepito1' ? c1 : sucSel==='chepito2' ? c2 : cAll;
+  if(tot<=0){
+    el.innerHTML=strip+`<div class="hint">${sucLabel(sucSel)==='las dos panaderías'?'No hay producción registrada':'<b>'+sucLabel(sucSel)+'</b> no tiene producción registrada'} en ${artTipo(per.tipo)}.</div>`;
+    wireSucBoxes(el); return;
+  }
   if(!materias.length){
-    el.innerHTML=`<div class="hint pend">Se produjeron ${nfmt(tot,0)} unidades, pero ninguno de esos productos tiene receta en Costos todavía.</div>`+sinRecetaHtml(sinReceta);
-    return;
+    el.innerHTML=strip+`<div class="hint pend">Se produjeron ${nfmt(tot,0)} unidades, pero ninguno de esos productos tiene receta en Costos todavía.</div>`+sinRecetaHtml(sinReceta);
+    wireSucBoxes(el); return;
   }
   // qué se produjo × costo de su receta = cuánto cuesta producirlo
   let prows='', pUn=0;
@@ -1502,24 +1541,40 @@ function renderDetail(){
       <td class="num">₡${nfmt(p.count>0?p.costo/p.count:NaN,2)}</td>
       <td class="num">${money0(p.costo)}</td></tr>`;
   });
+  // en qué productos se usó cada materia prima (para el desplegable al tocar la fila)
+  const usoPorInsumo={};
+  perProduct.forEach(p=>{
+    p.materias.forEach(mm=>{
+      (usoPorInsumo[mm.id]=usoPorInsumo[mm.id]||[]).push({producto:p.catNombre, count:p.count, baseQty:mm.baseQty, unidad:mm.unidad, costo:mm.costo});
+    });
+  });
   let body='', hayPend=false;
   materias.forEach(r=>{
     const pend=!isFinite(r.costo); if(pend) hayPend=true;
-    body+=`<tr class="${pend?'pend':''}">
-      <td>${escH(r.nombre)}</td>
+    const usos=(usoPorInsumo[r.id]||[]).slice().sort((a,b)=>b.baseQty-a.baseQty);
+    const det=usos.map(x=>`<tr><td>${escH(x.producto)} <span class="hint">(${nfmt(x.count,0)} u)</span></td>
+        <td class="num">${fmtCantidad(x.baseQty,x.unidad)}</td>
+        <td class="num">${isFinite(x.costo)?money0(x.costo):'<span class="pend">sin precio</span>'}</td></tr>`).join('');
+    body+=`<tr class="${pend?'pend ':''}mat clickable">
+      <td><span class="flecha">▸</span>${escH(r.nombre)}</td>
       <td class="num">${fmtCantidad(r.baseQty,r.unidad)}</td>
-      <td class="num">${isFinite(r.costo)?money0(r.costo):'<span class="pend">sin precio</span>'}</td></tr>`;
+      <td class="num">${isFinite(r.costo)?money0(r.costo):'<span class="pend">sin precio</span>'}</td></tr>
+     <tr class="matdet" hidden><td colspan="3">
+      <div class="hint" style="margin:2px 0 6px">Los ${fmtCantidad(r.baseQty,r.unidad)} de <b>${escH(r.nombre)}</b> se gastaron en:</div>
+      ${det?`<table class="gt gtin"><thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Costo</th></tr></thead><tbody>${det}</tbody></table>`:'<div class="hint">— sin detalle —</div>'}
+     </td></tr>`;
   });
-  el.innerHTML=`
+  el.innerHTML=strip+`
     <div class="bignum">${money0(total)}</div>
-    <div class="hint" style="margin:2px 0 14px">costó producir ${artTipo(per.tipo)} en materia prima · ${nfmt(tot,0)} unidades producidas</div>
-    <div class="listhead" style="margin-top:14px">Costo por producto (unidades × receta)</div>
+    <div class="hint" style="margin:2px 0 14px">costó producir ${artTipo(per.tipo)} en materia prima · ${nfmt(tot,0)} unidades producidas · ${sucSel?'solo <b>'+sucLabel(sucSel)+'</b>':'las dos panaderías juntas'}</div>
+    <div class="listhead" style="margin-top:14px">Costo por producto (unidades × receta)${sucSel?' — '+sucLabel(sucSel):''}</div>
     <table class="gt">
       <thead><tr><th>Producto</th><th class="num">Unidades</th><th class="num">₡ por unidad</th><th class="num">Costo</th></tr></thead>
       <tbody>${prows}</tbody>
       <tfoot><tr class="tot"><td>TOTAL</td><td class="num">${nfmt(pUn,0)}</td><td></td><td class="num">${money0(total)}</td></tr></tfoot>
     </table>
-    <div class="listhead">Materia prima que se gasta</div>
+    <div class="listhead">Materia prima que se gasta${sucSel?' — '+sucLabel(sucSel):''}</div>
+    <div class="hint" style="margin:0 0 6px">Tocá una materia prima para ver en cuáles productos se gastó.</div>
     <table class="gt">
       <thead><tr><th>Materia prima</th><th class="num">Cantidad usada</th><th class="num">Costo</th></tr></thead>
       <tbody>${body}</tbody>
@@ -1528,15 +1583,21 @@ function renderDetail(){
     ${hayPend?'<div class="hint pend" style="margin-top:8px">⚠️ «sin precio»: revisá el costo de compra de ese insumo en la pestaña Costos.</div>':''}
     ${sinReceta.length?sinRecetaHtml(sinReceta):''}
     <div class="hint" style="margin-top:8px">📅 Familia baguette (mañana-tarde): de lunes a viernes cuenta solo el renglón normal, el sábado solo los «sabado» y el domingo solo los «domingo».</div>`;
+  el.querySelectorAll('tr.mat').forEach(tr=>tr.onclick=()=>{
+    const det=tr.nextElementSibling; if(!det || !det.classList.contains('matdet')) return;
+    det.hidden=!det.hidden;
+    const f=tr.querySelector('.flecha'); if(f) f.textContent=det.hidden?'▸':'▾';
+  });
+  wireSucBoxes(el);
 }
 
 function renderPerProducto(){
   const el=$('g_prodTable'); if(!el) return;
   const per=periodo();
-  const {u}=unitsInRange(per.ini, per.fin);
+  const {u}=unitsInRange(per.ini, per.fin, sucSel||undefined);
   const {perProduct}=costOfUnits(u);
-  if(!perProduct.length){ el.innerHTML='<p class="hint">Todavía no hay productos con receta en '+artTipo(per.tipo)+'.</p>'; return; }
-  let html='';
+  if(!perProduct.length){ el.innerHTML='<p class="hint">Todavía no hay productos con receta en '+artTipo(per.tipo)+(sucSel?' para <b>'+sucLabel(sucSel)+'</b>':'')+'.</p>'; return; }
+  let html=`<p class="hint" style="margin:0 0 10px">Mostrando: <b>${sucSel?sucLabel(sucSel):'las dos panaderías juntas'}</b> — se cambia con las cajitas de arriba.</p>`;
   perProduct.forEach(p=>{
     const lines=p.materias.map(mm=>`<tr><td>${escH(mm.nombre)}</td>
       <td class="num">${fmtCantidad(mm.baseQty,mm.unidad)}</td>
@@ -1553,12 +1614,19 @@ function renderPerProducto(){
   el.innerHTML=html;
 }
 
-function tablaResumen(rows, footLabel, footUn, footTot){
+function tablaResumen(rows, footLabel, footUn, foot1, foot2, footTot){
   return `<table class="gt">
-    <thead><tr><th>${mode==='mes'?'Mes':mode==='semana'?'Semana':'Día'}</th><th class="num">Unidades</th><th class="num">Materias primas</th></tr></thead>
+    <thead><tr><th>${mode==='mes'?'Mes':mode==='semana'?'Semana':'Día'}</th><th class="num">Unidades</th><th class="num">Chepito 1</th><th class="num">Chepito 2</th><th class="num">Las dos</th></tr></thead>
     <tbody>${rows||''}</tbody>
-    ${footLabel?`<tfoot><tr class="tot"><td>${footLabel}</td><td class="num">${nfmt(footUn,0)}</td><td class="num">${money0(footTot)}</td></tr></tfoot>`:''}
+    ${footLabel?`<tfoot><tr class="tot"><td>${footLabel}</td><td class="num">${nfmt(footUn,0)}</td><td class="num">${money0(foot1)}</td><td class="num">${money0(foot2)}</td><td class="num">${money0(footTot)}</td></tr></tfoot>`:''}
   </table>`;
+}
+/* gasto del rango separado por panadería: {t1, t2, tot} (tot = las dos juntas) */
+function gastoPorSucursal(ini, fin){
+  return {
+    t1: costOfUnits(unitsInRange(ini, fin, 'chepito1').u).total,
+    t2: costOfUnits(unitsInRange(ini, fin, 'chepito2').u).total
+  };
 }
 
 function renderResumen(){
@@ -1572,18 +1640,20 @@ function renderResumen(){
 function renderResumenMeses(el){
   if($('g_resTitle')) $('g_resTitle').textContent='Resumen por mes';
   if($('g_resSub')) $('g_resSub').textContent='Tocá un mes para ver su detalle arriba.';
-  let rows='', yTot=0, yUn=0;
+  let rows='', yTot=0, yUn=0, y1=0, y2=0;
   for(let mi=0; mi<12; mi++){
-    const mm=String(mi+1).padStart(2,'0');
-    const {u,tot}=unitsInRange(curYear+'-'+mm+'-01', finDeMes(curYear,mi));
+    const mm=String(mi+1).padStart(2,'0'), ini=curYear+'-'+mm+'-01', fin=finDeMes(curYear,mi);
+    const {u,tot}=unitsInRange(ini, fin);
     const {total}=costOfUnits(u);
+    const {t1,t2}=tot?gastoPorSucursal(ini,fin):{t1:0,t2:0};
     if(isFinite(total)) yTot+=total; yUn+=tot;
+    if(isFinite(t1)) y1+=t1; if(isFinite(t2)) y2+=t2;
     rows+=`<tr class="clickable${mi===selMonth?' sel':''}" data-mi="${mi}"><td>${MESES[mi]}</td>
-      <td class="num">${tot?nfmt(tot,0):'—'}</td><td class="num">${tot?money0(total):'—'}</td></tr>`;
+      <td class="num">${tot?nfmt(tot,0):'—'}</td><td class="num">${tot?money0(t1):'—'}</td><td class="num">${tot?money0(t2):'—'}</td><td class="num">${tot?money0(total):'—'}</td></tr>`;
   }
   const nav=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
      <button class="btn btn-sm" id="g_yprev">‹</button><b class="num">${curYear}</b><button class="btn btn-sm" id="g_ynext">›</button></div>`;
-  el.innerHTML = nav + tablaResumen(rows, 'Año '+curYear, yUn, yTot);
+  el.innerHTML = nav + tablaResumen(rows, 'Año '+curYear, yUn, y1, y2, yTot);
   const yp=$('g_yprev'), yn=$('g_ynext');
   if(yp) yp.onclick=()=>{ curYear--; ensureData(); };
   if(yn) yn.onclick=()=>{ curYear++; ensureData(); };
@@ -1595,16 +1665,18 @@ function renderResumenDias(el){
   if($('g_resTitle')) $('g_resTitle').textContent='Días de '+MESES[mi]+' '+y+' con producción';
   if($('g_resSub')) $('g_resSub').textContent='Tocá un día para ver su detalle arriba.';
   const nDays=Number(finDeMes(y,mi).slice(8,10));
-  let rows='', mTot=0, mUn=0;
+  let rows='', mTot=0, mUn=0, m1=0, m2=0;
   for(let d=1; d<=nDays; d++){
     const iso=`${y}-${mm}-${String(d).padStart(2,'0')}`;
     const {u,tot}=unitsInRange(iso,iso); if(tot<=0) continue;
     const {total}=costOfUnits(u); if(isFinite(total)) mTot+=total; mUn+=tot;
+    const {t1,t2}=gastoPorSucursal(iso,iso);
+    if(isFinite(t1)) m1+=t1; if(isFinite(t2)) m2+=t2;
     rows+=`<tr class="clickable${iso===selDate?' sel':''}" data-d="${iso}"><td>${fmtDiaCorto(iso)}</td>
-      <td class="num">${nfmt(tot,0)}</td><td class="num">${money0(total)}</td></tr>`;
+      <td class="num">${nfmt(tot,0)}</td><td class="num">${money0(t1)}</td><td class="num">${money0(t2)}</td><td class="num">${money0(total)}</td></tr>`;
   }
-  if(!rows) rows='<tr><td colspan="3" class="hint">Sin producción registrada este mes.</td></tr>';
-  el.innerHTML = tablaResumen(rows, 'Mes', mUn, mTot);
+  if(!rows) rows='<tr><td colspan="5" class="hint">Sin producción registrada este mes.</td></tr>';
+  el.innerHTML = tablaResumen(rows, 'Mes', mUn, m1, m2, mTot);
   el.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ selDate=tr.dataset.d; render(); });
 }
 
@@ -1617,10 +1689,11 @@ function renderResumenSemanas(el){
     const mo=addDays(anchor,-7*k), su=addDays(mo,6);
     const {u,tot}=unitsInRange(mo,su);
     const {total}=costOfUnits(u);
+    const {t1,t2}=tot?gastoPorSucursal(mo,su):{t1:0,t2:0};
     rows+=`<tr class="clickable${mo===anchor?' sel':''}" data-w="${mo}"><td>${fmtDM(mo)} – ${fmtDM(su)}</td>
-      <td class="num">${tot?nfmt(tot,0):'—'}</td><td class="num">${tot?money0(total):'—'}</td></tr>`;
+      <td class="num">${tot?nfmt(tot,0):'—'}</td><td class="num">${tot?money0(t1):'—'}</td><td class="num">${tot?money0(t2):'—'}</td><td class="num">${tot?money0(total):'—'}</td></tr>`;
   }
-  el.innerHTML = tablaResumen(rows, '', 0, 0);
+  el.innerHTML = tablaResumen(rows, '', 0, 0, 0, 0);
   el.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ selDate=tr.dataset.w; render(); });
 }
 
@@ -1667,11 +1740,19 @@ function baseUnitLabel(unidad){ let fam=null; try{ fam=(UNIDADES[unidad]||{}).fa
 const round2 = n => isFinite(n) ? Math.round(n*100)/100 : '';
 function exportCSV(){
   const per=periodo();
-  const {u}=unitsInRange(per.ini, per.fin);
+  const {u}=unitsInRange(per.ini, per.fin, sucSel||undefined);
   const {total, materias, perProduct, sinReceta}=costOfUnits(u);
+  const totalJuntas = sucSel ? costOfUnits(unitsInRange(per.ini, per.fin).u).total : total;
+  const {t1,t2}=gastoPorSucursal(per.ini, per.fin);
   const rows=[];
   rows.push(['Gasto de materias primas', per.label]);
   rows.push(['Período', per.ini+' a '+per.fin]);
+  rows.push(['Panadería', sucSel ? sucLabel(sucSel) : 'Las dos juntas (Chepito 1 + 2)']);
+  rows.push([]);
+  rows.push(['Gasto por panadería','','','Costo (CRC)']);
+  rows.push(['Chepito 1','','',isFinite(t1)?Math.round(t1):'']);
+  rows.push(['Chepito 2','','',isFinite(t2)?Math.round(t2):'']);
+  rows.push(['Las dos juntas','','',isFinite(totalJuntas)?Math.round(totalJuntas):'']);
   rows.push([]);
   rows.push(['Materia prima','Cantidad','Unidad','Costo (CRC)']);
   materias.forEach(r=>rows.push([r.nombre, round2(r.baseQty), baseUnitLabel(r.unidad), isFinite(r.costo)?Math.round(r.costo):'']));
@@ -1699,7 +1780,7 @@ function exportCSV(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   const tag = mode==='mes' ? (curYear+'-'+String(selMonth+1).padStart(2,'0')) : (mode==='semana'? ('sem-'+per.ini) : per.ini);
-  a.download='gasto-materias-'+tag+'.csv';
+  a.download='gasto-materias-'+tag+(sucSel?'-'+sucSel:'')+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
 }
 
