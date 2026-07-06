@@ -169,7 +169,7 @@ body{padding:0 !important;}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--accent);color:#fff}
 #g_perlabel{min-width:180px;text-align:center;font-weight:800;font-size:14px}
-#g_date{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);color:var(--ink)}
+#g_date,#g_date2{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);color:var(--ink)}
 
 /* ===================== Gasto mensual ===================== */
 .gt{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -430,11 +430,14 @@ details.card[open] > summary::before{content:'\25BE  '}
     <button data-mode="dia" class="on">Día</button>
     <button data-mode="semana">Semana</button>
     <button data-mode="mes">Mes</button>
+    <button data-mode="rango">Rango</button>
    </div>
    <button class="btn btn-sm" id="g_prev" title="Anterior">‹</button>
    <span id="g_perlabel"></span>
    <button class="btn btn-sm" id="g_next" title="Siguiente">›</button>
    <input type="date" id="g_date" title="Elegí una fecha">
+   <span id="g_hasta" class="hint" hidden>al</span>
+   <input type="date" id="g_date2" title="Fin del rango" hidden>
   </div>
 
   <div id="g_status" class="hint" style="margin-bottom:10px"></div>
@@ -1404,7 +1407,7 @@ function costOfUnits(unitsByFila){
 }
 
 /* ---------------- estado del período ---------------- */
-let mode='dia';                 // 'dia' | 'semana' | 'mes' — abre en el día de hoy
+let mode='dia';                 // 'dia' | 'semana' | 'mes' | 'rango' — abre en el día de hoy
 let sucSel='';                  // '' = todos | 'chepito1' | 'chepito2' | id de un cliente extra
 let clientesExtraG=[];          // clientes extra del taller (config.clave='clientes_extra', los maneja Producción)
 function sucLabel(s){
@@ -1422,14 +1425,26 @@ async function loadClientesG(){
   }catch(e){ console.error(e); }
 }
 let selDate=todayISO();         // ancla para día / semana
+let rangoIni=addDays(todayISO(),-6), rangoFin=todayISO();   // rango personalizado (desde / hasta)
 let curYear=new Date().getFullYear();
 let selMonth=new Date().getMonth();
 let yearRows=[]; let loadedYear=null; let cargando=false;
 
-function neededYear(){ return (mode==='mes') ? curYear : Number(selDate.slice(0,4)); }
+function rangoOrdenado(){ return rangoIni<=rangoFin ? {ini:rangoIni, fin:rangoFin} : {ini:rangoFin, fin:rangoIni}; }
+function diasDeRango(ini,fin){ return Math.round((parseISO(fin)-parseISO(ini))/86400000)+1; }
+function neededYear(){
+  if(mode==='mes') return curYear;
+  if(mode==='rango'){ const r=rangoOrdenado(), a=Number(r.ini.slice(0,4)), b=Number(r.fin.slice(0,4)); return a===b ? a : a+'-'+b; }
+  return Number(selDate.slice(0,4));
+}
 function periodo(){
   if(mode==='dia')    return {ini:selDate, fin:selDate, label:fmtDiaLargo(selDate), tipo:'día'};
   if(mode==='semana'){ const mo=mondayOf(selDate), su=addDays(mo,6); return {ini:mo, fin:su, label:'Semana '+fmtDM(mo)+' al '+fmtDM(su)+' '+su.slice(0,4), tipo:'semana'}; }
+  if(mode==='rango'){
+    const r=rangoOrdenado();
+    if(r.ini===r.fin) return {ini:r.ini, fin:r.fin, label:fmtDiaLargo(r.ini), tipo:'rango'};
+    return {ini:r.ini, fin:r.fin, label:'Del '+fmtDM(r.ini)+' al '+fmtDM(r.fin)+' '+r.fin.slice(0,4)+' · '+diasDeRango(r.ini,r.fin)+' días', tipo:'rango'};
+  }
   const mm=String(selMonth+1).padStart(2,'0');
   return {ini:curYear+'-'+mm+'-01', fin:finDeMes(curYear,selMonth), label:MESES[selMonth]+' '+curYear, tipo:'mes'};
 }
@@ -1482,7 +1497,8 @@ async function ensureData(force){
     try{
       await loadOverrides();
       await loadClientesG();
-      yearRows = await fetchProduccion(y+'-01-01', y+'-12-31');
+      const ys=String(y).split('-');   // "2025-2026" cuando el rango cruza de año
+      yearRows = await fetchProduccion(ys[0]+'-01-01', ys[ys.length-1]+'-12-31');
       loadedYear=y; status('');
     }catch(e){
       console.error(e); status('⚠️ No se pudo leer de Supabase: '+(e.message||e), true);
@@ -1497,8 +1513,10 @@ async function ensureData(force){
 function render(){
   // controles
   document.querySelectorAll('#g_seg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
-  const dIn=$('g_date');
-  if(dIn){ dIn.style.display=(mode==='mes')?'none':''; dIn.value=selDate; }
+  const dIn=$('g_date'), dIn2=$('g_date2'), hSep=$('g_hasta');
+  if(dIn){ dIn.style.display=(mode==='mes')?'none':''; dIn.value=(mode==='rango')?rangoIni:selDate; dIn.title=(mode==='rango')?'Inicio del rango':'Elegí una fecha'; }
+  if(dIn2) dIn2.hidden=(mode!=='rango'); if(dIn2) dIn2.value=rangoFin;
+  if(hSep) hSep.hidden=(mode!=='rango');
   if($('g_perlabel')) $('g_perlabel').textContent = periodo().label;
   renderDetail();
   renderPerProducto();
@@ -1659,7 +1677,26 @@ function renderResumen(){
   if(cargando){ el.innerHTML='<div class="hint">Cargando…</div>'; return; }
   if(mode==='mes')    return renderResumenMeses(el);
   if(mode==='semana') return renderResumenSemanas(el);
+  if(mode==='rango')  return renderResumenRango(el);
   return renderResumenDias(el);
+}
+
+function renderResumenRango(el){
+  const per=periodo();
+  if($('g_resTitle')) $('g_resTitle').textContent='Días del rango';
+  if($('g_resSub')) $('g_resSub').textContent='Tocá un día para abrir su detalle (pasa a la vista Día).';
+  let rows='', rTot=0, rUn=0, r1=0, r2=0;
+  for(let iso=per.ini; iso<=per.fin; iso=addDays(iso,1)){
+    const {u,tot}=unitsInRange(iso,iso); if(tot<=0) continue;
+    const {total}=costOfUnits(u); if(isFinite(total)) rTot+=total; rUn+=tot;
+    const {t1,t2}=gastoPorSucursal(iso,iso);
+    if(isFinite(t1)) r1+=t1; if(isFinite(t2)) r2+=t2;
+    rows+=`<tr class="clickable" data-d="${iso}"><td>${fmtDiaCorto(iso)}</td>
+      <td class="num">${nfmt(tot,0)}</td><td class="num">${money0(t1)}</td><td class="num">${money0(t2)}</td><td class="num">${money0(total)}</td></tr>`;
+  }
+  if(!rows) rows='<tr><td colspan="5" class="hint">Sin producción registrada en este rango.</td></tr>';
+  el.innerHTML = tablaResumen(rows, 'Rango', rUn, r1, r2, rTot);
+  el.querySelectorAll('tr.clickable').forEach(tr=>tr.onclick=()=>{ mode='dia'; selDate=tr.dataset.d; ensureData(); });
 }
 
 function renderResumenMeses(el){
@@ -1808,7 +1845,7 @@ function exportCSV(){
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  const tag = mode==='mes' ? (curYear+'-'+String(selMonth+1).padStart(2,'0')) : (mode==='semana'? ('sem-'+per.ini) : per.ini);
+  const tag = mode==='mes' ? (curYear+'-'+String(selMonth+1).padStart(2,'0')) : mode==='semana' ? ('sem-'+per.ini) : mode==='rango' ? (per.ini+'_a_'+per.fin) : per.ini;
   a.download='gasto-materias-'+tag+(sucSel?'-'+sucSel:'')+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
 }
@@ -1817,17 +1854,23 @@ function exportCSV(){
 const seg=$('g_seg');
 if(seg) seg.addEventListener('click', e=>{
   const b=e.target.closest('button[data-mode]'); if(!b) return;
+  if(b.dataset.mode==='rango' && mode!=='rango'){ const p=periodo(); rangoIni=p.ini; rangoFin=p.fin; }  // arranca con el período que estaba en pantalla
   mode=b.dataset.mode; ensureData();     // puede cambiar el año necesario
 });
 function nav(delta){
   if(mode==='dia') selDate=addDays(selDate, delta);
   else if(mode==='semana') selDate=addDays(selDate, delta*7);
+  else if(mode==='rango'){
+    const r=rangoOrdenado(), nd=diasDeRango(r.ini,r.fin);   // corre el rango completo hacia atrás/adelante
+    rangoIni=addDays(r.ini, delta*nd); rangoFin=addDays(r.fin, delta*nd);
+  }
   else { selMonth+=delta; if(selMonth<0){selMonth=11;curYear--;} if(selMonth>11){selMonth=0;curYear++;} }
   ensureData();
 }
 if($('g_prev'))   $('g_prev').onclick   = ()=>nav(-1);
 if($('g_next'))   $('g_next').onclick   = ()=>nav(1);
-if($('g_date'))   $('g_date').onchange  = e=>{ if(e.target.value){ selDate=e.target.value; ensureData(); } };
+if($('g_date'))   $('g_date').onchange  = e=>{ if(!e.target.value) return; if(mode==='rango') rangoIni=e.target.value; else selDate=e.target.value; ensureData(); };
+if($('g_date2'))  $('g_date2').onchange = e=>{ if(e.target.value){ rangoFin=e.target.value; ensureData(); } };
 if($('g_reload')) $('g_reload').onclick = ()=>ensureData(true);
 if($('g_export')) $('g_export').onclick = exportCSV;
 
