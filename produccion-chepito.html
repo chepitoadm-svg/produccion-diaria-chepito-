@@ -267,6 +267,11 @@ details.card[open] > summary::before{content:'\25BE  '}
             <option value="unidad">unidad</option>
           </select>
         </div>
+        <div class="field">
+          <label>Proveedor <span class="info" title="A quién le comprás este insumo. En «Gasto materia prima» vas a ver cuánto debiste comprarle a cada proveedor en el período, para comparar con las facturas reales.">i</span></label>
+          <input id="insProv" list="insProvList" placeholder="Ej: Dipo, Belca…">
+          <datalist id="insProvList"></datalist>
+        </div>
       </div>
       <div class="err" id="insErr"></div>
       <div class="formrow">
@@ -610,22 +615,23 @@ function blankProd(){ return {id:null, nombre:"", precio:"", componentes:[]}; }
 /* ============ INSUMOS ============ */
 const $ = id => document.getElementById(id);
 function insReset(){
-  insEditId=null; $("insNombre").value=""; $("insCosto").value=""; $("insCant").value=""; $("insUnidad").value="kg";
+  insEditId=null; $("insNombre").value=""; $("insCosto").value=""; $("insCant").value=""; $("insUnidad").value="kg"; $("insProv").value="";
   $("insTitle").textContent="Nuevo insumo"; $("insSave").textContent="Agregar insumo"; $("insCancel").hidden=true; $("insErr").textContent="";
 }
 $("insSave").onclick = () => {
   const nombre=$("insNombre").value.trim();
   const costo=parseFloat($("insCosto").value), cant=parseFloat($("insCant").value), unidad=$("insUnidad").value;
+  const proveedor=$("insProv").value.trim();
   if(!nombre){ $("insErr").textContent="Poné un nombre."; return; }
   if(!(costo>0)){ $("insErr").textContent="El costo de compra debe ser mayor a 0."; return; }
   if(!(cant>0)){ $("insErr").textContent="La cantidad debe ser mayor a 0."; return; }
-  if(insEditId){ Object.assign(getInsumo(insEditId), {nombre,costo,cantCompra:cant,unidad}); }
-  else { state.insumos.push({id:uid(),nombre,costo,cantCompra:cant,unidad}); }
+  if(insEditId){ Object.assign(getInsumo(insEditId), {nombre,costo,cantCompra:cant,unidad,proveedor}); }
+  else { state.insumos.push({id:uid(),nombre,costo,cantCompra:cant,unidad,proveedor}); }
   save(); insReset(); renderAll();
 };
 $("insCancel").onclick = insReset;
 function insEdit(id){ const i=getInsumo(id); insEditId=id; $("insNombre").value=i.nombre; $("insCosto").value=i.costo;
-  $("insCant").value=i.cantCompra; $("insUnidad").value=i.unidad; $("insTitle").textContent="Editar insumo";
+  $("insCant").value=i.cantCompra; $("insUnidad").value=i.unidad; $("insProv").value=i.proveedor||""; $("insTitle").textContent="Editar insumo";
   $("insSave").textContent="Guardar cambios"; $("insCancel").hidden=false; window.scrollTo({top:0,behavior:"smooth"}); }
 function insDelete(id){
   const usado = usadoEn("insumo",id);
@@ -633,15 +639,22 @@ function insDelete(id){
   else if(!confirm("¿Borrar este insumo?")) return;
   state.insumos = state.insumos.filter(x=>x.id!==id); save(); renderAll();
 }
+function fillProvDatalist(){
+  const dl=$("insProvList"); if(!dl) return;
+  const provs=[...new Set(state.insumos.map(i=>(i.proveedor||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  dl.innerHTML=provs.map(p=>`<option value="${esc(p)}">`).join("");
+}
 function renderInsumos(){
+  fillProvDatalist();
   const el=$("insList");
   if(!state.insumos.length){ el.innerHTML = empty("No hay insumos todavía.","Agregá la harina y las materias primas que usás."); return; }
   let h = `<div class="listhead">Insumos (${state.insumos.length})</div>`;
   for(const i of state.insumos){
     const cb = costoBaseInsumo(i);
     const ub = unitsForFamilia(UNIDADES[i.unidad].familia)[0];
+    const prov = (i.proveedor||"").trim();
     h += `<div class="irow">
-      <div class="nm">${esc(i.nombre)}<small>${esc(String(i.costo))!=="" ? money(i.costo)+" · "+(i.cantCompra)+" "+i.unidad : ""}</small></div>
+      <div class="nm">${esc(i.nombre)}<small>${esc(String(i.costo))!=="" ? money(i.costo)+" · "+(i.cantCompra)+" "+i.unidad : ""}${prov?" · 🚚 "+esc(prov):""}</small></div>
       <div class="price num">${moneyU(cb)}<small>por ${ub}</small></div>
       <div class="ops"><button class="btn btn-sm" onclick="insEdit('${i.id}')">Editar</button>
         <button class="btn btn-sm btn-danger" onclick="insDelete('${i.id}')">✕</button></div>
@@ -1371,7 +1384,21 @@ function costoInsumo(id, baseQty){
   const ins=getInsumo(id); if(!ins) return null;
   let per=Infinity; try{ per=costoBaseInsumo(ins); }catch(e){}
   const costo = isFinite(per)? baseQty*per : NaN;
-  return {id, nombre:ins.nombre, unidad:ins.unidad, baseQty, costo};
+  return {id, nombre:ins.nombre, unidad:ins.unidad, proveedor:(ins.proveedor||"").trim(), baseQty, costo};
+}
+/* agrupa las materias primas del período por proveedor: [{proveedor, costo, items:[...]}] */
+function comprasPorProveedor(materias){
+  const g={};
+  materias.forEach(r=>{
+    const key=r.proveedor||'';
+    (g[key]=g[key]||{proveedor:key, costo:0, items:[]});
+    if(isFinite(r.costo)) g[key].costo+=r.costo;
+    g[key].items.push(r);
+  });
+  return Object.values(g).sort((a,b)=>{
+    if(!a.proveedor !== !b.proveedor) return a.proveedor ? -1 : 1;   // «sin proveedor» al final
+    return b.costo-a.costo;
+  });
 }
 function costOfUnits(unitsByFila){
   const nombreFila = nombrePorFila();
@@ -1591,6 +1618,23 @@ function renderDetail(){
       (usoPorInsumo[mm.id]=usoPorInsumo[mm.id]||[]).push({producto:p.catNombre, count:p.count, baseQty:mm.baseQty, unidad:mm.unidad, costo:mm.costo});
     });
   });
+  // agrupar materias primas por proveedor (para saber cuánto se le debió comprar a cada uno)
+  const provGrupos = comprasPorProveedor(materias);
+  let provBody='', hayProvPend=false;
+  provGrupos.forEach(g=>{
+    if(!g.proveedor) hayProvPend=true;
+    const det=g.items.map(x=>`<tr><td>${escH(x.nombre)}</td>
+        <td class="num">${fmtCantidad(x.baseQty,x.unidad)}</td>
+        <td class="num">${isFinite(x.costo)?money0(x.costo):'<span class="pend">sin precio</span>'}</td></tr>`).join('');
+    provBody+=`<tr class="${g.proveedor?'':'pend '}mat clickable">
+      <td><span class="flecha">▸</span>${g.proveedor?'🚚 '+escH(g.proveedor):'⚠️ Sin proveedor'}</td>
+      <td class="num">${g.items.length}</td>
+      <td class="num">${money0(g.costo)}</td></tr>
+     <tr class="matdet" hidden><td colspan="3">
+      <div class="hint" style="margin:2px 0 6px">${g.proveedor?'Lo que se le debió comprar a <b>'+escH(g.proveedor)+'</b> según lo producido:':'Insumos sin proveedor asignado — asignáselo en Costos → Insumos:'}</div>
+      <table class="gt gtin"><thead><tr><th>Materia prima</th><th class="num">Cantidad</th><th class="num">Costo</th></tr></thead><tbody>${det}</tbody></table>
+     </td></tr>`;
+  });
   let body='', hayPend=false;
   materias.forEach(r=>{
     const pend=!isFinite(r.costo); if(pend) hayPend=true;
@@ -1623,6 +1667,14 @@ function renderDetail(){
       <tbody>${body}</tbody>
       <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td class="num">${money0(total)}</td></tr></tfoot>
     </table>
+    <div class="listhead">🚚 Compra por proveedor${sucSel?' — '+sucLabel(sucSel):''}</div>
+    <div class="hint" style="margin:0 0 6px">Cuánto se le debió comprar a cada proveedor según lo producido en ${artTipo(per.tipo)}. Compará contra las facturas reales. Tocá un proveedor para ver el desglose.</div>
+    <table class="gt">
+      <thead><tr><th>Proveedor</th><th class="num">Insumos</th><th class="num">Costo</th></tr></thead>
+      <tbody>${provBody}</tbody>
+      <tfoot><tr class="tot"><td colspan="2">TOTAL</td><td class="num">${money0(total)}</td></tr></tfoot>
+    </table>
+    ${hayProvPend?'<div class="hint pend" style="margin-top:8px">⚠️ «Sin proveedor»: a esos insumos les falta el proveedor — se asigna editando el insumo en Costos → Insumos.</div>':''}
     ${hayPend?'<div class="hint pend" style="margin-top:8px">⚠️ «sin precio»: revisá el costo de compra de ese insumo en la pestaña Costos.</div>':''}
     ${sinReceta.length?sinRecetaHtml(sinReceta):''}
     <div class="hint" style="margin-top:8px">📅 Familia baguette (mañana-tarde): de lunes a viernes cuenta solo el renglón normal, el sábado solo los «sabado» y el domingo solo los «domingo».</div>`;
@@ -1823,6 +1875,14 @@ function exportCSV(){
   rows.push(['Materia prima','Cantidad','Unidad','Costo (CRC)']);
   materias.forEach(r=>rows.push([r.nombre, round2(r.baseQty), baseUnitLabel(r.unidad), isFinite(r.costo)?Math.round(r.costo):'']));
   rows.push(['TOTAL','','',Math.round(total)]);
+  rows.push([]);
+  rows.push(['Compra por proveedor (lo que se debió comprar según lo producido)']);
+  rows.push(['Proveedor','Materia prima','Cantidad','Unidad','Costo (CRC)']);
+  comprasPorProveedor(materias).forEach(g=>{
+    rows.push([g.proveedor||'SIN PROVEEDOR','','','',Math.round(g.costo)]);
+    g.items.forEach(x=>rows.push(['', x.nombre, round2(x.baseQty), baseUnitLabel(x.unidad), isFinite(x.costo)?Math.round(x.costo):'']));
+  });
+  rows.push(['TOTAL','','','',Math.round(total)]);
   rows.push([]);
   rows.push(['Costo por producto (unidades × receta)']);
   rows.push(['Producto','Unidades','CRC por unidad','Costo (CRC)']);
