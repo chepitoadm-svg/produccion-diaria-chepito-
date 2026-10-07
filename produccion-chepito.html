@@ -517,6 +517,9 @@ details.card[open] > summary::before{content:'\25BE  '}
 .hrn-spfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .hrn-spok{color:var(--good);font-weight:800;font-size:13px}
 .hrn-spbad{color:var(--bad);font-weight:800;font-size:13px}
+.hrn-hojatag{margin:2px 0 12px;font-size:13.5px;color:var(--ink-soft)}
+.hrn-hojatag b{color:var(--accent);font-weight:800}
+.hrn-saverow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 </style>
 <section id="main-horneadas" class="mainpanel" hidden>
  <div class="wrap">
@@ -534,7 +537,8 @@ details.card[open] > summary::before{content:'\25BE  '}
 
   <div class="card">
    <h2>1 · Hornos</h2>
-   <p class="sub">¿Cuántos hornos hay, cuántas latas le caben a cada uno y cuánto dura cada tanda?</p>
+   <p class="sub">¿Cuántos hornos hay, cuántas latas le caben a cada uno y cuánto dura cada tanda? <b>Cada hoja guarda sus propios hornos.</b></p>
+   <div class="hrn-hojatag">Hornos de la hoja: <b id="h_cfgHoja">—</b></div>
    <div class="grid">
     <div class="field"><label>¿Cuántos hornos?</label><input type="number" id="h_n" min="1" max="20" step="1"></div>
     <div class="field"><label>Latas por horno</label><input type="number" id="h_cap" min="1" step="1"></div>
@@ -542,6 +546,10 @@ details.card[open] > summary::before{content:'\25BE  '}
     <div class="field"><label>Hora de inicio (opcional)</label><input type="time" id="h_inicio"></div>
    </div>
    <div id="h_ovens"></div>
+   <div class="hrn-saverow">
+    <button class="btn btn-accent" id="h_save">💾 Guardar hornos de esta hoja</button>
+    <span class="saved" id="h_savedHoja">guardado ✓</span>
+   </div>
   </div>
 
   <div class="card">
@@ -2232,13 +2240,14 @@ try{ supa = window._supaChepito || (window.supabase ? window.supabase.createClie
 
 /* ---- Config propia ---- */
 const CFG_KEY='chepito_horneadas_v1';
-let cfg = { nHornos:2, capDefault:10, minTanda:30, inicio:'', hornos:[], prioridad:{}, modoManual:{}, manual:{} };
+let cfg = { nHornos:2, capDefault:10, minTanda:30, inicio:'', hornos:[], prioridad:{}, modoManual:{}, manual:{}, hojaHornos:{} };
 try{ const raw=JSON.parse(localStorage.getItem(CFG_KEY)); if(raw && typeof raw==='object') cfg=Object.assign(cfg, raw); }catch(e){}
 function guardCfg(){
   if(!cfg.prioridad  || typeof cfg.prioridad!=='object')  cfg.prioridad={};
   if(!cfg.modoManual || typeof cfg.modoManual!=='object') cfg.modoManual={};
   if(!cfg.manual     || typeof cfg.manual!=='object')     cfg.manual={};
   if(!cfg.splits     || typeof cfg.splits!=='object')     cfg.splits={};   // {hoja:{producto:[{name,qty}]}}
+  if(!cfg.hojaHornos || typeof cfg.hojaHornos!=='object') cfg.hojaHornos={}; // {hoja:{nHornos,capDefault,minTanda,inicio,hornos:[]}}
 }
 guardCfg();
 function normalizeHornos(){
@@ -2255,9 +2264,34 @@ function normalizeHornos(){
 }
 normalizeHornos();
 
-let saveTmr=null, cloudTmr=null;
+/* ---- Config de hornos POR HOJA ----
+   Cada hoja guarda su propio nº de hornos, capacidades, minutos y hora de
+   inicio en cfg.hojaHornos[hoja]. Los campos "sueltos" de arriba (cfg.nHornos,
+   cfg.hornos, …) son la config de trabajo de la hoja que está en pantalla y
+   sirven de plantilla para una hoja que todavía no se configuró. */
+function snapHorn(name){   // guarda la config de trabajo actual en la hoja indicada
+  if(name==null) return;
+  if(!cfg.hojaHornos || typeof cfg.hojaHornos!=='object') cfg.hojaHornos={};
+  cfg.hojaHornos[name]={
+    nHornos:cfg.nHornos, capDefault:cfg.capDefault, minTanda:cfg.minTanda, inicio:cfg.inicio||'',
+    hornos:(Array.isArray(cfg.hornos)?cfg.hornos:[]).map(h=>({nombre:h.nombre, cap:h.cap}))
+  };
+}
+function loadHorn(name){   // trae la config de la hoja indicada a los campos de trabajo
+  if(!cfg.hojaHornos || typeof cfg.hojaHornos!=='object') cfg.hojaHornos={};
+  const h=(name!=null)?cfg.hojaHornos[name]:null;
+  if(h && typeof h==='object'){
+    cfg.nHornos=h.nHornos; cfg.capDefault=h.capDefault; cfg.minTanda=h.minTanda; cfg.inicio=h.inicio||'';
+    cfg.hornos=Array.isArray(h.hornos)?h.hornos.map(x=>({nombre:x.nombre, cap:x.cap})):[];
+  }
+  // Si la hoja no tiene config propia todavía, se deja la de trabajo como plantilla.
+  normalizeHornos();
+}
+
+let saveTmr=null, saveTmr2=null, cloudTmr=null;
 function flashSaved(){ const s=$('h_saved'); if(!s) return; s.classList.add('on'); clearTimeout(saveTmr); saveTmr=setTimeout(()=>s.classList.remove('on'),1200); }
 function saveCfg(){
+  snapHorn(current);   // la config de hornos de trabajo pertenece a la hoja actual
   try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
   flashSaved();
   if(cloudTmr) clearTimeout(cloudTmr);
@@ -2271,7 +2305,7 @@ async function cloudPull(){
     if(data && data.valor && typeof data.valor==='object'){
       cfg=Object.assign(cfg, data.valor);
       guardCfg();
-      normalizeHornos();
+      loadHorn(current);   // trae la config de hornos de la hoja en pantalla
       try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
       renderConfig(); render();
     }
@@ -2481,6 +2515,7 @@ function tandaTimes(plan){
 /* ---- Render de la configuración de hornos ---- */
 function renderConfig(){
   $('h_n').value=cfg.nHornos; $('h_cap').value=cfg.capDefault; $('h_min').value=cfg.minTanda; $('h_inicio').value=cfg.inicio||'';
+  const tag=$('h_cfgHoja'); if(tag) tag.textContent = current || '(elegí una hoja en el paso 2)';
   const box=$('h_ovens'); box.innerHTML='';
   cfg.hornos.forEach((h,i)=>{
     const row=document.createElement('div'); row.className='hrn-ovrow';
@@ -2801,18 +2836,27 @@ $('h_n').oninput=e=>{ cfg.nHornos=Math.max(1,Math.min(20,parseInt(e.target.value
 $('h_cap').oninput=e=>{ cfg.capDefault=Math.max(1,parseInt(e.target.value)||1); cfg.hornos.forEach(h=>h.cap=cfg.capDefault); saveCfg(); renderConfig(); render(); };
 $('h_min').oninput=e=>{ cfg.minTanda=Math.max(1,parseInt(e.target.value)||1); saveCfg(); render(); };
 $('h_inicio').onchange=e=>{ cfg.inicio=e.target.value||''; saveCfg(); render(); };
-$('h_sheet').onchange=e=>{ current=e.target.value; render(); if(splitOpen) renderSplitBox(); };
-$('h_reload').onclick=async ()=>{ await loadSheets(); renderSheetSelect(); render(); if(splitOpen) renderSplitBox(); };
+$('h_sheet').onchange=e=>{ snapHorn(current); current=e.target.value; loadHorn(current); renderConfig(); render(); if(splitOpen) renderSplitBox(); };
+$('h_reload').onclick=async ()=>{ snapHorn(current); await loadSheets(); renderSheetSelect(); loadHorn(current); renderConfig(); render(); if(splitOpen) renderSplitBox(); };
 $('h_print').onclick=printPlan;
 if($('h_splitbtn')) $('h_splitbtn').onclick=toggleSplit;
 if($('h_print2')) $('h_print2').onclick=printPlan;
 if($('h_print3')) $('h_print3').onclick=printPlan;
+if($('h_save')) $('h_save').onclick=async ()=>{
+  if(!current){ alert('Primero elegí una hoja de producción en el paso 2.'); return; }
+  snapHorn(current);
+  try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
+  const btn=$('h_save'), old=btn.textContent; btn.disabled=true; btn.textContent='Guardando…';
+  try{ await cloudSave(); }catch(e){}
+  btn.disabled=false; btn.textContent=old;
+  const s=$('h_savedHoja'); if(s){ s.textContent='guardado ✓ — '+current; s.classList.add('on'); clearTimeout(saveTmr2); saveTmr2=setTimeout(()=>s.classList.remove('on'),3000); }
+};
 $('h_modoAuto').onclick=()=>{ if(!current) return; cfg.modoManual[current]=false; saveCfg(); renderPlanMode(); };
 $('h_modoManual').onclick=()=>{ if(!current) return; const prods=productosDe(current); if(!prods.length) return; if(!Array.isArray(cfg.manual[current]) || !cfg.manual[current].length) cfg.manual[current]=deriveManualFromAuto(prods); cfg.modoManual[current]=true; saveCfg(); renderPlanMode(); };
 
 /* ---- Arranque + refresco al abrir el tab ---- */
-async function hOnShow(){ await loadSheets(); renderSheetSelect(); render(); }
-async function init(){ renderConfig(); await loadSheets(); renderSheetSelect(); render(); cloudPull(); }
+async function hOnShow(){ await loadSheets(); renderSheetSelect(); loadHorn(current); renderConfig(); render(); }
+async function init(){ await loadSheets(); renderSheetSelect(); loadHorn(current); renderConfig(); render(); cloudPull(); }
 const navEl=document.querySelector('.mainnav');
 if(navEl) navEl.addEventListener('click', e=>{ const b=e.target.closest('button[data-main="horneadas"]'); if(b) hOnShow(); });
 init();
